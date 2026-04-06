@@ -71,6 +71,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             url TEXT UNIQUE NOT NULL,
             title TEXT,
+            description TEXT,
+            color TEXT,
             added_at TEXT DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS entries (
@@ -86,6 +88,15 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_entries_fetched ON entries(fetched_at DESC);
         CREATE INDEX IF NOT EXISTS idx_entries_published ON entries(published DESC);
     """)
+    # Migrate existing databases
+    try:
+        db.execute("ALTER TABLE feeds ADD COLUMN description TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute("ALTER TABLE feeds ADD COLUMN color TEXT")
+    except sqlite3.OperationalError:
+        pass
     db.close()
 
 
@@ -118,6 +129,37 @@ def requires_auth(f):
 # ---------------------------------------------------------------------------
 
 
+def fetch_site_color(feed_url: str) -> str | None:
+    """Try to extract a theme color from a feed's website."""
+    try:
+        import re
+        import urllib.request
+        from urllib.parse import urlparse
+
+        parsed_url = urlparse(feed_url)
+        site_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        req = urllib.request.Request(
+            site_url, headers={"User-Agent": "rss-aggregator/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            html = resp.read(50_000).decode("utf-8", errors="ignore")
+        # Try <meta name="theme-color" content="#...">
+        m = re.search(
+            r'<meta[^>]*name=["\']theme-color["\'][^>]*content=["\'](#[0-9a-fA-F]{3,8})["\']',
+            html,
+        )
+        if not m:
+            m = re.search(
+                r'<meta[^>]*content=["\'](#[0-9a-fA-F]{3,8})["\'][^>]*name=["\']theme-color["\']',
+                html,
+            )
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return None
+
+
 def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
     """Fetch a single feed, insert new entries. Returns count of new items."""
     try:
@@ -126,10 +168,25 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
         print(f"[poll] error fetching {feed_url}: {e}")
         return 0
 
-    # Update feed title if we got one
+    # Update feed metadata
+    updates = {}
     if parsed.feed.get("title"):
+        updates["title"] = parsed.feed.title
+    desc = parsed.feed.get("subtitle") or parsed.feed.get("description")
+    if desc:
+        updates["description"] = desc
+
+    # Fetch theme color if we don't have one yet
+    existing = db.execute("SELECT color FROM feeds WHERE id = ?", (feed_id,)).fetchone()
+    if existing and not existing["color"]:
+        color = fetch_site_color(feed_url)
+        if color:
+            updates["color"] = color
+
+    if updates:
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
         db.execute(
-            "UPDATE feeds SET title = ? WHERE id = ?", (parsed.feed.title, feed_id)
+            f"UPDATE feeds SET {set_clause} WHERE id = ?", (*updates.values(), feed_id)
         )
 
     new = 0
@@ -215,17 +272,46 @@ def index():
 
     entries = db.execute(f"""
         SELECT e.url, e.title, e.published, e.fetched_at,
-               f.title AS feed_title, f.url AS feed_url
+               f.title AS feed_title, f.url AS feed_url,
+               f.description AS feed_desc, f.color AS feed_color
         FROM entries e
         JOIN feeds f ON e.feed_id = f.id
         {time_clause}
         ORDER BY COALESCE(e.published, e.fetched_at) DESC
+        LIMIT 300
     """).fetchall()
 
     feeds = db.execute("SELECT * FROM feeds ORDER BY title, url").fetchall()
     return render_template(
         "index.html", entries=entries, feeds=feeds, time_range=range_filter
     )
+
+
+@app.route("/favicon/<path:domain>")
+def favicon_proxy(domain):
+    """Proxy favicons from Google so we can read them on a canvas (CORS)."""
+    import urllib.request
+
+    try:
+        url = f"https://www.google.com/s2/favicons?sz=32&domain={domain}"
+        req = urllib.request.Request(url, headers={"User-Agent": "rss-aggregator/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = resp.read()
+            content_type = resp.headers.get("Content-Type", "image/png")
+        return Response(
+            data,
+            mimetype=content_type,
+            headers={"Cache-Control": "public, max-age=604800"},
+        )
+    except Exception:
+        # Return a 1x1 transparent pixel
+        return Response(
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+            b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
+            b"\x00\x00\x05\x00\x01\r\n\xb4\x00\x00\x00\x00IEND\xaeB`\x82",
+            mimetype="image/png",
+            headers={"Cache-Control": "public, max-age=604800"},
+        )
 
 
 @app.route("/feed.xml")

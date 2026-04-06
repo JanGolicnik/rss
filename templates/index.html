@@ -223,7 +223,7 @@
   {% for entry in entries %}
   <div class="entry" data-feed="{{ entry.feed_title or entry.feed_url }}" data-domain="{{ entry.url.split('/')[2] }}">
     <div class="entry-info">
-      <img class="favicon" src="https://www.google.com/s2/favicons?sz=16&domain={{ entry.url.split('/')[2] }}" alt="" loading="lazy" crossorigin="anonymous">
+      <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="" loading="lazy">
       <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
     </div>
     <div class="entry-right">
@@ -331,12 +331,12 @@ function filterFeed(feedName, el) {
 
   domains.forEach(function(domain) {
     var img = new Image();
-    img.crossOrigin = 'anonymous';
+    
     img.onload = function() {
       var colors = getTopColors(img);
       if (colors) applyColors(domain, colors);
     };
-    img.src = 'https://www.google.com/s2/favicons?sz=32&domain=' + domain;
+    img.src = '/favicon/' + domain;
   });
 })();
 </script>
