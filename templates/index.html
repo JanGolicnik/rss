@@ -54,6 +54,29 @@
     color: var(--fg-dim);
   }
 
+  .header-right {
+    display: flex;
+    align-items: baseline;
+    gap: 1.2rem;
+  }
+
+  .random-btn {
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+    text-decoration: none;
+    border: 1px dashed var(--border);
+    padding: 0.2rem 0.6rem;
+    border-radius: 3px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .random-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    border-style: solid;
+  }
+
   .entry {
     padding: 0.5rem 0;
     padding-left: 0.75rem;
@@ -221,7 +244,10 @@
 
 <header>
   <h1>links</h1>
-  <span class="meta">{{ entries|length }} links from {{ feeds|length }} feeds</span>
+  <div class="header-right">
+    <a href="/random" class="random-btn">~ take me somewhere ~</a>
+    <span class="meta">{{ entries|length }} links from {{ feeds|length }} feeds</span>
+  </div>
 </header>
 
 <div class="filter-bar">
