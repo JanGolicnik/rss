@@ -254,9 +254,10 @@ def poller_loop():
 @app.route("/")
 def index():
     db = get_db()
-    range_filter = request.args.get("range", "all")
+    range_filter = request.args.get("range", "month")
 
     time_clause = ""
+    limit = "LIMIT 300"
     if range_filter == "today":
         time_clause = (
             "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-1 day')"
@@ -269,6 +270,8 @@ def index():
         time_clause = (
             "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-30 days')"
         )
+    elif range_filter == "all":
+        limit = ""
 
     entries = db.execute(f"""
         SELECT e.url, e.title, e.published, e.fetched_at,
@@ -278,7 +281,7 @@ def index():
         JOIN feeds f ON e.feed_id = f.id
         {time_clause}
         ORDER BY COALESCE(e.published, e.fetched_at) DESC
-        LIMIT 300
+        {limit}
     """).fetchall()
 
     feeds = db.execute("SELECT * FROM feeds ORDER BY title, url").fetchall()

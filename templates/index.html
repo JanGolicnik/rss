@@ -179,6 +179,29 @@
     border-color: var(--accent);
   }
 
+  .feed-select {
+    font-family: inherit;
+    font-size: 0.7rem;
+    color: var(--fg-dim);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+    outline: none;
+    margin-left: auto;
+  }
+
+  .feed-select:hover, .feed-select:focus {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .feed-select option {
+    background: var(--bg);
+    color: var(--fg);
+  }
+
   footer {
     margin-top: 2rem;
     padding-top: 1rem;
@@ -205,19 +228,16 @@
   <a href="?range=today" {% if time_range == 'today' %}class="active"{% endif %}>today</a>
   <a href="?range=week" {% if time_range == 'week' %}class="active"{% endif %}>week</a>
   <a href="?range=month" {% if time_range == 'month' %}class="active"{% endif %}>month</a>
-  <a href="?" {% if time_range == 'all' %}class="active"{% endif %}>all</a>
+  <a href="?range=all" {% if time_range == 'all' %}class="active"{% endif %}>all</a>
+  {% if feeds %}
+  <select class="feed-select" onchange="filterFeed(this.value)">
+    <option value="">all feeds</option>
+    {% for feed in feeds %}
+    <option value="{{ feed.title or feed.url }}">{{ feed.title or feed.url | truncate(40) }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
 </div>
-
-{% if feeds %}
-<div class="filter-bar">
-  <a href="#" class="active" onclick="filterFeed(null, this); return false;">all feeds</a>
-  {% for feed in feeds %}
-  <a href="#" onclick="filterFeed('{{ feed.title or feed.url }}', this); return false;">
-    {{ feed.title or feed.url | truncate(30) }}
-  </a>
-  {% endfor %}
-</div>
-{% endif %}
 
 {% if entries %}
   {% for entry in entries %}
@@ -246,10 +266,8 @@
 </footer>
 
 <script>
-function filterFeed(feedName, el) {
-  document.querySelectorAll('.filter-bar a').forEach(a => a.classList.remove('active'));
-  el.classList.add('active');
-  document.querySelectorAll('.entry').forEach(entry => {
+function filterFeed(feedName) {
+  document.querySelectorAll('.entry').forEach(function(entry) {
     if (!feedName || entry.dataset.feed === feedName) {
       entry.style.display = '';
     } else {
