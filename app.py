@@ -220,7 +220,6 @@ def index():
         JOIN feeds f ON e.feed_id = f.id
         {time_clause}
         ORDER BY COALESCE(e.published, e.fetched_at) DESC
-        LIMIT 300
     """).fetchall()
 
     feeds = db.execute("SELECT * FROM feeds ORDER BY title, url").fetchall()
