@@ -4,31 +4,49 @@ A deliberately simple link dump. Not a reader.
 Polls feeds, stores links in SQLite, renders them as flat HTML.
 """
 
+import os
 import sqlite3
-import time
 import threading
+import time
 from datetime import datetime, timezone
 from functools import wraps
-from flask import (
-    Flask, render_template, request, redirect, url_for, flash,
-    Response, g
-)
+from pathlib import Path
+
 import feedparser
+from flask import Flask, Response, flash, g, redirect, render_template, request, url_for
 
 # ---------------------------------------------------------------------------
-# Config – change these
+# Config – loaded from .env file next to app.py
 # ---------------------------------------------------------------------------
-DATABASE = "links.db"
-ADMIN_USER = "admin"
-ADMIN_PASS = "changeme"          # change this before deploying
-POLL_INTERVAL = 3600             # seconds (1 hour)
+
+
+def load_env(path=".env"):
+    """Read KEY=VALUE lines from a file into os.environ."""
+    p = Path(__file__).parent / path
+    if not p.exists():
+        raise SystemExit(f"Missing {p} — copy .env.example and fill it in.")
+    for line in p.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+load_env()
+
+DATABASE = os.environ.get("DATABASE", "links.db")
+ADMIN_USER = os.environ["ADMIN_USER"]
+ADMIN_PASS = os.environ["ADMIN_PASS"]
+POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "3600"))
 
 app = Flask(__name__)
-app.secret_key = "replace-me-with-something-random"
+app.secret_key = os.environ["SECRET_KEY"]
 
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
+
 
 def get_db():
     if "db" not in g:
@@ -75,6 +93,7 @@ def init_db():
 # Auth
 # ---------------------------------------------------------------------------
 
+
 def check_auth(username, password):
     return username == ADMIN_USER and password == ADMIN_PASS
 
@@ -90,12 +109,14 @@ def requires_auth(f):
                 {"WWW-Authenticate": 'Basic realm="Admin"'},
             )
         return f(*args, **kwargs)
+
     return decorated
 
 
 # ---------------------------------------------------------------------------
 # Feed polling
 # ---------------------------------------------------------------------------
+
 
 def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
     """Fetch a single feed, insert new entries. Returns count of new items."""
@@ -107,8 +128,9 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
 
     # Update feed title if we got one
     if parsed.feed.get("title"):
-        db.execute("UPDATE feeds SET title = ? WHERE id = ?",
-                    (parsed.feed.title, feed_id))
+        db.execute(
+            "UPDATE feeds SET title = ? WHERE id = ?", (parsed.feed.title, feed_id)
+        )
 
     new = 0
     for entry in parsed.entries:
@@ -171,21 +193,103 @@ def poller_loop():
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @app.route("/")
 def index():
     db = get_db()
-    # Grab the 300 most recent entries, joined with feed info
-    entries = db.execute("""
+    range_filter = request.args.get("range", "all")
+
+    time_clause = ""
+    if range_filter == "today":
+        time_clause = (
+            "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-1 day')"
+        )
+    elif range_filter == "week":
+        time_clause = (
+            "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-7 days')"
+        )
+    elif range_filter == "month":
+        time_clause = (
+            "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-30 days')"
+        )
+
+    entries = db.execute(f"""
         SELECT e.url, e.title, e.published, e.fetched_at,
                f.title AS feed_title, f.url AS feed_url
         FROM entries e
         JOIN feeds f ON e.feed_id = f.id
-        ORDER BY e.fetched_at DESC, e.published DESC
+        {time_clause}
+        ORDER BY COALESCE(e.published, e.fetched_at) DESC
         LIMIT 300
     """).fetchall()
 
     feeds = db.execute("SELECT * FROM feeds ORDER BY title, url").fetchall()
-    return render_template("index.html", entries=entries, feeds=feeds)
+    return render_template(
+        "index.html", entries=entries, feeds=feeds, time_range=range_filter
+    )
+
+
+@app.route("/feed.xml")
+def rss_feed():
+    db = get_db()
+    entries = db.execute("""
+        SELECT e.url, e.title, e.published, e.fetched_at,
+               f.title AS feed_title
+        FROM entries e
+        JOIN feeds f ON e.feed_id = f.id
+        ORDER BY COALESCE(e.published, e.fetched_at) DESC
+        LIMIT 50
+    """).fetchall()
+
+    site_url = request.url_root.rstrip("/")
+    now = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+
+    items = []
+    for e in entries:
+        pub = ""
+        if e["published"]:
+            try:
+                dt = datetime.fromisoformat(e["published"])
+                pub = dt.strftime("%a, %d %b %Y %H:%M:%S +0000")
+            except Exception:
+                pub = e["published"]
+        elif e["fetched_at"]:
+            pub = e["fetched_at"]
+
+        title = (
+            (e["title"] or e["url"])
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+        link = e["url"].replace("&", "&amp;")
+        source = (
+            (e["feed_title"] or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+
+        items.append(f"""    <item>
+      <title>{title}</title>
+      <link>{link}</link>
+      <guid>{link}</guid>
+      {f"<pubDate>{pub}</pubDate>" if pub else ""}
+      {f"<category>{source}</category>" if source else ""}
+    </item>""")
+
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>links</title>
+    <link>{site_url}</link>
+    <description>RSS link aggregator</description>
+    <lastBuildDate>{now}</lastBuildDate>
+{chr(10).join(items)}
+  </channel>
+</rss>"""
+
+    return Response(xml, mimetype="application/rss+xml")
 
 
 @app.route("/admin")

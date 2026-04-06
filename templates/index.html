@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>links</title>
+<link rel="alternate" type="application/rss+xml" title="links" href="/feed.xml">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap');
 
@@ -160,9 +161,16 @@
   <span class="meta">{{ entries|length }} links from {{ feeds|length }} feeds</span>
 </header>
 
+<div class="filter-bar">
+  <a href="?range=today" {% if time_range == 'today' %}class="active"{% endif %}>today</a>
+  <a href="?range=week" {% if time_range == 'week' %}class="active"{% endif %}>week</a>
+  <a href="?range=month" {% if time_range == 'month' %}class="active"{% endif %}>month</a>
+  <a href="?" {% if time_range == 'all' %}class="active"{% endif %}>all</a>
+</div>
+
 {% if feeds %}
 <div class="filter-bar">
-  <a href="#" class="active" onclick="filterFeed(null, this); return false;">all</a>
+  <a href="#" class="active" onclick="filterFeed(null, this); return false;">all feeds</a>
   {% for feed in feeds %}
   <a href="#" onclick="filterFeed('{{ feed.title or feed.url }}', this); return false;">
     {{ feed.title or feed.url | truncate(30) }}
@@ -190,7 +198,7 @@
 {% endif %}
 
 <footer>
-  rss link aggregator · <a href="/admin" style="color: var(--fg-dim);">admin</a>
+  rss link aggregator · <a href="/feed.xml" style="color: var(--fg-dim);">feed</a> · <a href="/admin" style="color: var(--fg-dim);">admin</a>
 </footer>
 
 <script>
