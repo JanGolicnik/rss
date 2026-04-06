@@ -6,20 +6,19 @@ Polls feeds, stores links in SQLite, renders them as flat HTML.
 
 import os
 import sqlite3
-import time
 import threading
+import time
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
-from flask import (
-    Flask, render_template, request, redirect, url_for, flash,
-    Response, g
-)
+
 import feedparser
+from flask import Flask, Response, flash, g, redirect, render_template, request, url_for
 
 # ---------------------------------------------------------------------------
 # Config – loaded from .env file next to app.py
 # ---------------------------------------------------------------------------
+
 
 def load_env(path=".env"):
     """Read KEY=VALUE lines from a file into os.environ."""
@@ -32,6 +31,7 @@ def load_env(path=".env"):
             continue
         key, _, value = line.partition("=")
         os.environ.setdefault(key.strip(), value.strip())
+
 
 load_env()
 
@@ -46,6 +46,7 @@ app.secret_key = os.environ["SECRET_KEY"]
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
+
 
 def get_db():
     if "db" not in g:
@@ -103,6 +104,7 @@ def init_db():
 # Auth
 # ---------------------------------------------------------------------------
 
+
 def check_auth(username, password):
     return username == ADMIN_USER and password == ADMIN_PASS
 
@@ -118,6 +120,7 @@ def requires_auth(f):
                 {"WWW-Authenticate": 'Basic realm="Admin"'},
             )
         return f(*args, **kwargs)
+
     return decorated
 
 
@@ -125,21 +128,31 @@ def requires_auth(f):
 # Feed polling
 # ---------------------------------------------------------------------------
 
+
 def fetch_site_color(feed_url: str) -> str | None:
     """Try to extract a theme color from a feed's website."""
     try:
-        from urllib.parse import urlparse
-        import urllib.request
         import re
+        import urllib.request
+        from urllib.parse import urlparse
+
         parsed_url = urlparse(feed_url)
         site_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-        req = urllib.request.Request(site_url, headers={"User-Agent": "rss-aggregator/1.0"})
+        req = urllib.request.Request(
+            site_url, headers={"User-Agent": "rss-aggregator/1.0"}
+        )
         with urllib.request.urlopen(req, timeout=10) as resp:
             html = resp.read(50_000).decode("utf-8", errors="ignore")
         # Try <meta name="theme-color" content="#...">
-        m = re.search(r'<meta[^>]*name=["\']theme-color["\'][^>]*content=["\'](#[0-9a-fA-F]{3,8})["\']', html)
+        m = re.search(
+            r'<meta[^>]*name=["\']theme-color["\'][^>]*content=["\'](#[0-9a-fA-F]{3,8})["\']',
+            html,
+        )
         if not m:
-            m = re.search(r'<meta[^>]*content=["\'](#[0-9a-fA-F]{3,8})["\'][^>]*name=["\']theme-color["\']', html)
+            m = re.search(
+                r'<meta[^>]*content=["\'](#[0-9a-fA-F]{3,8})["\'][^>]*name=["\']theme-color["\']',
+                html,
+            )
         if m:
             return m.group(1)
     except Exception:
@@ -172,8 +185,9 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)
-        db.execute(f"UPDATE feeds SET {set_clause} WHERE id = ?",
-                   (*updates.values(), feed_id))
+        db.execute(
+            f"UPDATE feeds SET {set_clause} WHERE id = ?", (*updates.values(), feed_id)
+        )
 
     new = 0
     for entry in parsed.entries:
@@ -236,6 +250,7 @@ def poller_loop():
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @app.route("/")
 def index():
     db = get_db()
@@ -244,11 +259,17 @@ def index():
     time_clause = ""
     limit = "LIMIT 300"
     if range_filter == "today":
-        time_clause = "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-1 day')"
+        time_clause = (
+            "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-1 day')"
+        )
     elif range_filter == "week":
-        time_clause = "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-7 days')"
+        time_clause = (
+            "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-7 days')"
+        )
     elif range_filter == "month":
-        time_clause = "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-30 days')"
+        time_clause = (
+            "WHERE COALESCE(e.published, e.fetched_at) >= datetime('now', '-30 days')"
+        )
     elif range_filter == "all":
         limit = ""
 
@@ -264,15 +285,15 @@ def index():
     """).fetchall()
 
     feeds = db.execute("SELECT * FROM feeds ORDER BY title, url").fetchall()
-    return render_template("index.html", entries=entries, feeds=feeds, time_range=range_filter)
+    return render_template(
+        "index.html", entries=entries, feeds=feeds, time_range=range_filter
+    )
 
 
 @app.route("/random")
 def random_link():
     db = get_db()
-    entry = db.execute(
-        "SELECT url FROM entries ORDER BY RANDOM() LIMIT 1"
-    ).fetchone()
+    entry = db.execute("SELECT url FROM entries ORDER BY RANDOM() LIMIT 1").fetchone()
     if entry:
         return redirect(entry["url"])
     return redirect(url_for("index"))
@@ -282,22 +303,27 @@ def random_link():
 def favicon_proxy(domain):
     """Proxy favicons from Google so we can read them on a canvas (CORS)."""
     import urllib.request
+
     try:
         url = f"https://www.google.com/s2/favicons?sz=32&domain={domain}"
         req = urllib.request.Request(url, headers={"User-Agent": "rss-aggregator/1.0"})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = resp.read()
             content_type = resp.headers.get("Content-Type", "image/png")
-        return Response(data, mimetype=content_type,
-                        headers={"Cache-Control": "public, max-age=604800"})
+        return Response(
+            data,
+            mimetype=content_type,
+            headers={"Cache-Control": "public, max-age=604800"},
+        )
     except Exception:
         # Return a 1x1 transparent pixel
         return Response(
-            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
-            b'\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01'
-            b'\x00\x00\x05\x00\x01\r\n\xb4\x00\x00\x00\x00IEND\xaeB`\x82',
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+            b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
+            b"\x00\x00\x05\x00\x01\r\n\xb4\x00\x00\x00\x00IEND\xaeB`\x82",
             mimetype="image/png",
-            headers={"Cache-Control": "public, max-age=604800"})
+            headers={"Cache-Control": "public, max-age=604800"},
+        )
 
 
 @app.route("/feed.xml")
@@ -327,24 +353,34 @@ def rss_feed():
         elif e["fetched_at"]:
             pub = e["fetched_at"]
 
-        title = (e["title"] or e["url"]).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        title = (
+            (e["title"] or e["url"])
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
         link = e["url"].replace("&", "&amp;")
-        source = (e["feed_title"] or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        source = (
+            (e["feed_title"] or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
 
         items.append(f"""    <item>
       <title>{title}</title>
       <link>{link}</link>
       <guid>{link}</guid>
-      {f'<pubDate>{pub}</pubDate>' if pub else ''}
-      {f'<category>{source}</category>' if source else ''}
+      {f"<pubDate>{pub}</pubDate>" if pub else ""}
+      {f"<category>{source}</category>" if source else ""}
     </item>""")
 
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>links</title>
+    <title>blogson</title>
     <link>{site_url}</link>
-    <description>RSS link aggregator</description>
+    <description>blogson rss aggregator</description>
     <lastBuildDate>{now}</lastBuildDate>
 {chr(10).join(items)}
   </channel>

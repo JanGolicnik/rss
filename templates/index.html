@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>links</title>
-<link rel="alternate" type="application/rss+xml" title="links" href="/feed.xml">
+<title>blogson</title>
+<link rel="alternate" type="application/rss+xml" title="blogson" href="/feed.xml">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap');
 
@@ -243,7 +243,7 @@
 <body>
 
 <header>
-  <h1>links</h1>
+  <h1>blogson</h1>
   <div class="header-right">
     <a href="/random" class="random-btn">~ take me somewhere ~</a>
     <span class="meta">{{ entries|length }} links from {{ feeds|length }} feeds</span>
@@ -288,27 +288,20 @@
 {% endif %}
 
 <footer>
-  rss link aggregator · <a href="/feed.xml" style="color: var(--fg-dim);">feed</a> · <a href="/admin" style="color: var(--fg-dim);">admin</a>
+  blogson · <a href="/feed.xml" style="color: var(--fg-dim);">feed</a> · <a href="/admin" style="color: var(--fg-dim);">admin</a>
 </footer>
 
 <script>
 function filterFeed(feedName) {
+  var params = new URLSearchParams(window.location.search);
   if (feedName) {
-    var params = new URLSearchParams(window.location.search);
-    if (params.get('range') !== 'all') {
-      params.set('range', 'all');
-      params.set('feed', feedName);
-      window.location.search = params.toString();
-      return;
-    }
+    params.set('range', 'all');
+    params.set('feed', feedName);
+  } else {
+    params.delete('feed');
+    if (!params.get('range')) params.set('range', 'month');
   }
-  document.querySelectorAll('.entry').forEach(function(entry) {
-    if (!feedName || entry.dataset.feed === feedName) {
-      entry.style.display = '';
-    } else {
-      entry.style.display = 'none';
-    }
-  });
+  window.location.search = params.toString();
 }
 
 // Restore feed filter from URL on page load
