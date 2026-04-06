@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>links</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0c0c0c;
+    --fg: #c8c8c8;
+    --fg-dim: #666;
+    --fg-bright: #e8e8e8;
+    --accent: #ff6600;
+    --link: #88aaff;
+    --link-hover: #bbddff;
+    --border: #222;
+    --tag-bg: #1a1a1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  header .meta {
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+  }
+
+  .entry {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: baseline;
+  }
+
+  .entry:hover {
+    background: var(--tag-bg);
+    margin: 0 -0.5rem;
+    padding: 0.5rem;
+    border-radius: 2px;
+  }
+
+  .entry a {
+    color: var(--link);
+    text-decoration: none;
+    word-break: break-word;
+  }
+
+  .entry a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+  }
+
+  .entry .feed-tag {
+    font-size: 0.7rem;
+    color: var(--fg-dim);
+    background: var(--tag-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 2px;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+  }
+
+  .entry .date {
+    font-size: 0.7rem;
+    color: var(--fg-dim);
+    white-space: nowrap;
+  }
+
+  .entry-info {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    min-width: 0;
+  }
+
+  .entry-right {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+  }
+
+  .empty {
+    color: var(--fg-dim);
+    padding: 3rem 0;
+    text-align: center;
+    font-style: italic;
+  }
+
+  .filter-bar {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .filter-bar a {
+    font-size: 0.7rem;
+    color: var(--fg-dim);
+    text-decoration: none;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+
+  .filter-bar a:hover, .filter-bar a.active {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.7rem;
+    color: var(--fg-dim);
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 1rem; font-size: 13px; }
+    .entry { grid-template-columns: 1fr; gap: 0.2rem; }
+    .entry-right { justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>links</h1>
+  <span class="meta">{{ entries|length }} links from {{ feeds|length }} feeds</span>
+</header>
+
+{% if feeds %}
+<div class="filter-bar">
+  <a href="#" class="active" onclick="filterFeed(null, this); return false;">all</a>
+  {% for feed in feeds %}
+  <a href="#" onclick="filterFeed('{{ feed.title or feed.url }}', this); return false;">
+    {{ feed.title or feed.url | truncate(30) }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if entries %}
+  {% for entry in entries %}
+  <div class="entry" data-feed="{{ entry.feed_title or entry.feed_url }}">
+    <div class="entry-info">
+      <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title }}</a>
+    </div>
+    <div class="entry-right">
+      <span class="feed-tag">{{ entry.feed_title or entry.feed_url | truncate(20) }}</span>
+      {% if entry.published %}
+      <span class="date">{{ entry.published[:10] }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">no links yet. add some feeds.</div>
+{% endif %}
+
+<footer>
+  rss link aggregator · <a href="/admin" style="color: var(--fg-dim);">admin</a>
+</footer>
+
+<script>
+function filterFeed(feedName, el) {
+  document.querySelectorAll('.filter-bar a').forEach(a => a.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.entry').forEach(entry => {
+    if (!feedName || entry.dataset.feed === feedName) {
+      entry.style.display = '';
+    } else {
+      entry.style.display = 'none';
+    }
+  });
+}
+</script>
+
+</body>
+</html>
