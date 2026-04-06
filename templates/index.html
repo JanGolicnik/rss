@@ -56,17 +56,21 @@
 
   .entry {
     padding: 0.5rem 0;
+    padding-left: 0.75rem;
     border-bottom: 1px solid var(--border);
+    border-left: 3px solid transparent;
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 1rem;
     align-items: baseline;
+    transition: border-color 0.3s;
   }
 
   .entry:hover {
     background: var(--tag-bg);
     margin: 0 -0.5rem;
     padding: 0.5rem;
+    padding-left: 0.75rem;
     border-radius: 2px;
   }
 
@@ -89,6 +93,33 @@
     border-radius: 2px;
     white-space: nowrap;
     border: 1px solid var(--border);
+    cursor: default;
+    position: relative;
+    transition: color 0.3s;
+  }
+
+  .tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 0.5rem 0.7rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    white-space: normal;
+    width: max-content;
+    max-width: 300px;
+    line-height: 1.4;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  .feed-tag:hover .tooltip {
+    display: block;
   }
 
   .entry .date {
@@ -190,13 +221,16 @@
 
 {% if entries %}
   {% for entry in entries %}
-  <div class="entry" data-feed="{{ entry.feed_title or entry.feed_url }}">
+  <div class="entry" data-feed="{{ entry.feed_title or entry.feed_url }}" data-domain="{{ entry.url.split('/')[2] }}">
     <div class="entry-info">
-      <img class="favicon" src="https://www.google.com/s2/favicons?sz=16&domain={{ entry.url.split('/')[2] }}" alt="" loading="lazy">
+      <img class="favicon" src="https://www.google.com/s2/favicons?sz=16&domain={{ entry.url.split('/')[2] }}" alt="" loading="lazy" crossorigin="anonymous">
       <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
     </div>
     <div class="entry-right">
-      <span class="feed-tag">{{ entry.feed_title or entry.feed_url | truncate(20) }}</span>
+      <span class="feed-tag">
+        {{ entry.feed_title or entry.feed_url | truncate(20) }}
+        {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
+      </span>
       {% if entry.published %}
       <span class="date">{{ entry.published[:10] }}</span>
       {% endif %}
@@ -223,6 +257,88 @@ function filterFeed(feedName, el) {
     }
   });
 }
+
+// Extract two dominant colors from favicons, apply as gradient left border
+(function() {
+  function getTopColors(img) {
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    canvas.width = img.naturalWidth || 16;
+    canvas.height = img.naturalHeight || 16;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    var data;
+    try {
+      data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    } catch(e) {
+      return null;
+    }
+
+    // Quantize pixels into buckets
+    var buckets = {};
+    for (var i = 0; i < data.length; i += 4) {
+      var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+      if (a < 128) continue;
+      var brightness = (r + g + b) / 3;
+      if (brightness > 240 || brightness < 15) continue;
+
+      var qr = (r >> 5) << 5;
+      var qg = (g >> 5) << 5;
+      var qb = (b >> 5) << 5;
+      var key = qr + ',' + qg + ',' + qb;
+      if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, count: 0 };
+      buckets[key].r += r;
+      buckets[key].g += g;
+      buckets[key].b += b;
+      buckets[key].count++;
+    }
+
+    var sorted = Object.values(buckets).sort(function(a, b) { return b.count - a.count; });
+    if (sorted.length === 0) return null;
+
+    var c1 = sorted[0];
+    var color1 = { r: Math.round(c1.r / c1.count), g: Math.round(c1.g / c1.count), b: Math.round(c1.b / c1.count) };
+
+    var color2;
+    if (sorted.length > 1) {
+      var c2 = sorted[1];
+      color2 = { r: Math.round(c2.r / c2.count), g: Math.round(c2.g / c2.count), b: Math.round(c2.b / c2.count) };
+    } else {
+      color2 = { r: Math.min(255, color1.r + 40), g: Math.min(255, color1.g + 40), b: Math.min(255, color1.b + 40) };
+    }
+
+    return [color1, color2];
+  }
+
+  function rgb(c) {
+    return 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')';
+  }
+
+  function applyColors(domain, colors) {
+    var c1 = rgb(colors[0]);
+    var c2 = rgb(colors[1]);
+    document.querySelectorAll('.entry[data-domain="' + domain + '"]').forEach(function(entry) {
+      entry.style.borderImage = 'linear-gradient(to bottom, ' + c1 + ', ' + c2 + ') 1';
+      var tag = entry.querySelector('.feed-tag');
+      if (tag) tag.style.color = c1;
+    });
+  }
+
+  var domains = new Set();
+  document.querySelectorAll('.entry[data-domain]').forEach(function(el) {
+    domains.add(el.dataset.domain);
+  });
+
+  domains.forEach(function(domain) {
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function() {
+      var colors = getTopColors(img);
+      if (colors) applyColors(domain, colors);
+    };
+    img.src = 'https://www.google.com/s2/favicons?sz=32&domain=' + domain;
+  });
+})();
 </script>
 
 </body>
