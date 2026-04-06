@@ -267,6 +267,15 @@
 
 <script>
 function filterFeed(feedName) {
+  if (feedName) {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('range') !== 'all') {
+      params.set('range', 'all');
+      params.set('feed', feedName);
+      window.location.search = params.toString();
+      return;
+    }
+  }
   document.querySelectorAll('.entry').forEach(function(entry) {
     if (!feedName || entry.dataset.feed === feedName) {
       entry.style.display = '';
@@ -275,6 +284,19 @@ function filterFeed(feedName) {
     }
   });
 }
+
+// Restore feed filter from URL on page load
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var feed = params.get('feed');
+  if (feed) {
+    var select = document.querySelector('.feed-select');
+    if (select) select.value = feed;
+    document.querySelectorAll('.entry').forEach(function(entry) {
+      entry.style.display = (!feed || entry.dataset.feed === feed) ? '' : 'none';
+    });
+  }
+})();
 
 // Extract two dominant colors from favicons, apply as gradient left border
 (function() {
