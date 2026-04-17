@@ -39,8 +39,10 @@
         <a href="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
       </div>
       {% if entry.tags %}
+      {% set tag_list = entry.tags.split(', ') %}
       <div class="entry-tags">
-        {% for tag in entry.tags.split(', ') %}<span class="tag">{{ tag }}</span>{% endfor %}
+        {% for tag in tag_list[:4] %}<span class="tag">{{ tag }}</span>{% endfor %}
+        {% if tag_list|length > 4 %}<span class="tag tag-more" title="{{ tag_list[4:] | join(', ') }}">+{{ tag_list|length - 4 }}</span>{% endif %}
       </div>
       {% endif %}
     </div>
