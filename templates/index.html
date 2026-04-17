@@ -52,11 +52,11 @@
         {{ entry.feed_title or entry.feed_url | truncate(20) }}
         {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
       </span>
-      {% if entry.visits and entry.visits > 0 %}
-      <span class="visits" title="{{ entry.visits }} visit{{ 's' if entry.visits != 1 else '' }}">{{ entry.visits }}♡</span>
-      {% endif %}
       {% if entry.date %}
       <span class="date">{{ entry.date[:10] }}</span>
+      {% endif %}
+      {% if entry.visits and entry.visits > 0 %}
+      <span class="visits" title="{{ entry.visits }} visit{{ 's' if entry.visits != 1 else '' }}">{{ entry.visits }} <span class="heart">♥</span></span>
       {% endif %}
     </div>
   </div>
