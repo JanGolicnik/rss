@@ -42,7 +42,7 @@
       {% set tag_list = entry.tags.split(', ') %}
       <div class="entry-tags">
         {% for tag in tag_list[:4] %}<span class="tag">{{ tag }}</span>{% endfor %}
-        {% if tag_list|length > 4 %}<span class="tag tag-more" title="{{ tag_list[4:] | join(', ') }}">+{{ tag_list|length - 4 }}</span>{% endif %}
+        {% if tag_list|length > 4 %}<span class="tag tag-more">+{{ tag_list|length - 4 }}</span>{% endif %}
       </div>
       {% endif %}
     </div>
