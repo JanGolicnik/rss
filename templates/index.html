@@ -1,126 +1,75 @@
-{% extends "base.html" %} {% block head_extra %}
-<link
-    rel="alternate"
-    type="application/rss+xml"
-    title="blogson"
-    href="{{ url_for('rss_feed') }}"
-/>
-{% endblock %} {% block header %}
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="alternate" type="application/rss+xml" title="blogson" href="{{ url_for('rss_feed') }}">
+{% endblock %}
+
+{% block header %}
 <header class="with-right">
-    <h1><a href="/" class="brand-link">blogson</a></h1>
-    <div class="header-right">
-        <a href="/random" class="random-btn" target="_blank" rel="noopener"
-            >~ take me somewhere ~</a
-        >
-        <span class="meta"
-            >{{ entries|length }} links from {{ feeds|length }} feeds</span
-        >
-    </div>
+  <h1><a href="/" class="brand-link">blogson</a></h1>
+  <div class="header-right">
+    <a href="/random" class="random-btn" target="_blank" rel="noopener">~ take me somewhere ~</a>
+    <span class="meta">{{ entries|length }} links from {{ feeds|length }} feeds</span>
+  </div>
 </header>
-{% endblock %} {% block content %}
+{% endblock %}
+
+{% block content %}
 <div class="filter-bar">
-    <a
-        href="?range=today"
-        {%
-        if
-        time_range=""
-        ="today"
-        %}class="active"
-        {%
-        endif
-        %}
-        >today</a
-    >
-    <a
-        href="?range=week"
-        {%
-        if
-        time_range=""
-        ="week"
-        %}class="active"
-        {%
-        endif
-        %}
-        >week</a
-    >
-    <a
-        href="?range=month"
-        {%
-        if
-        time_range=""
-        ="month"
-        %}class="active"
-        {%
-        endif
-        %}
-        >month</a
-    >
-    <a href="?range=all" {% if time_range="" ="all" %}class="active" {% endif %}
-        >all</a
-    >
-    {% if feeds %}
-    <select class="feed-select" onchange="filterFeed(this.value)">
-        <option value="">all feeds</option>
-        {% for feed in feeds %}
-        <option value="{{ feed.title or feed.url }}">
-            {{ feed.title or feed.url | truncate(40) }}
-        </option>
-        {% endfor %}
-    </select>
-    {% endif %}
+  <a href="?range=today" {% if time_range == 'today' %}class="active"{% endif %}>today</a>
+  <a href="?range=week" {% if time_range == 'week' %}class="active"{% endif %}>week</a>
+  <a href="?range=month" {% if time_range == 'month' %}class="active"{% endif %}>month</a>
+  <a href="?range=all" {% if time_range == 'all' %}class="active"{% endif %}>all</a>
+  {% if feeds %}
+  <select class="feed-select" onchange="filterFeed(this.value)">
+    <option value="">all feeds</option>
+    {% for feed in feeds %}
+    <option value="{{ feed.title or feed.url }}">{{ feed.title or feed.url | truncate(40) }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
 </div>
 
-{% if entries %} {% for entry in entries %}
-<div
-    class="entry"
-    data-feed="{{ entry.feed_title or entry.feed_url }}"
-    data-domain="{{ entry.url.split('/')[2] }}"
->
+{% if entries %}
+  {% for entry in entries %}
+  <div class="entry" data-feed="{{ entry.feed_title or entry.feed_url }}" data-domain="{{ entry.url.split('/')[2] }}">
     <div class="entry-main">
-        <div class="entry-info">
-            <img
-                class="favicon"
-                src="/favicon/{{ entry.url.split('/')[2] }}"
-                alt=""
-                loading="lazy"
-            />
-            <a href="/go/{{ entry.id }}" target="_blank" rel="noopener"
-                >{{ entry.title if entry.title and entry.title.strip() else
-                entry.url.split('/')[2] }}</a
-            >
-        </div>
-        {% if entry.tags %}
-        <div class="entry-tags">
-            {% for tag in entry.tags.split(', ') %}<span class="tag"
-                >{{ tag }}</span
-            >{% endfor %}
-        </div>
-        {% endif %}
+      <div class="entry-info">
+        <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="" loading="lazy">
+        <a href="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
+      </div>
+      {% if entry.tags %}
+      <div class="entry-tags">
+        {% for tag in entry.tags.split(', ') %}<span class="tag">{{ tag }}</span>{% endfor %}
+      </div>
+      {% endif %}
     </div>
     <div class="entry-right">
-        {% if entry.author %}
-        <span class="author">by {{ entry.author | truncate(24) }}</span>
-        {% endif %}
-        <span class="feed-tag">
-            {{ entry.feed_title or entry.feed_url | truncate(20) }} {% if
-            entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span
-            >{% endif %}
-        </span>
-        {% if entry.visits and entry.visits > 0 %}
-        <span
-            class="visits"
-            title="{{ entry.visits }} visit{{ 's' if entry.visits != 1 else '' }}"
-            >{{ entry.visits }}♡</span
-        >
-        {% endif %} {% if entry.date %}
-        <span class="date">{{ entry.date[:10] }}</span>
-        {% endif %}
+      {% if entry.author %}
+      <span class="author">by {{ entry.author | truncate(24) }}</span>
+      {% endif %}
+      <span class="feed-tag">
+        {{ entry.feed_title or entry.feed_url | truncate(20) }}
+        {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
+      </span>
+      {% if entry.visits and entry.visits > 0 %}
+      <span class="visits" title="{{ entry.visits }} visit{{ 's' if entry.visits != 1 else '' }}">{{ entry.visits }}♡</span>
+      {% endif %}
+      {% if entry.date %}
+      <span class="date">{{ entry.date[:10] }}</span>
+      {% endif %}
     </div>
-</div>
-{% endfor %} {% else %}
-<div class="empty">no links yet. add some feeds.</div>
-{% endif %} {% endblock %} {% block footer_extra %}
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">no links yet. add some feeds.</div>
+{% endif %}
+{% endblock %}
+
+{% block footer_extra %}
 <div class="shortcuts">j/k to navigate · enter to open · g to jump to top</div>
-{% endblock %} {% block scripts %}
+{% endblock %}
+
+{% block scripts %}
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 {% endblock %}
