@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{% block title %}blogson{% endblock %}</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='style.css') }}"
+        />
+        {% block head_extra %}{% endblock %}
+    </head>
+    <body>
+        {% block header %}
+        <header>
+            <a href="/" class="brand-link">blogson</a>{% block header_subtitle
+            %}{% endblock %}
+        </header>
+        {% endblock %} {% with messages = get_flashed_messages() %} {% for msg
+        in messages %}
+        <div class="flash">{{ msg }}</div>
+        {% endfor %} {% endwith %} {% block content %}{% endblock %} {% block
+        footer %}
+        <footer>
+            blogson ·
+            <a href="{{ url_for('rss_feed') }}">feed</a> ·
+            <a href="/admin">admin</a> ·
+            <a href="https://github.com/JanGolicnik">github</a>
+            {% block footer_extra %}{% endblock %}
+        </footer>
+        {% endblock %} {% block scripts %}{% endblock %}
+    </body>
+</html>

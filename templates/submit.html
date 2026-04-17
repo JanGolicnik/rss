@@ -1,0 +1,37 @@
+{% extends "base.html" %} {% block title %}blogson · submit{% endblock %} {%
+block header_subtitle %}<span class="subtitle">/ submit</span>{% endblock %} {%
+block content %}
+<h2>Submit a feed</h2>
+<div class="add-form">
+    <form
+        action="{{ url_for('submit_add_feed') }}"
+        method="post"
+        style="display: contents"
+    >
+        <input
+            type="text"
+            name="url"
+            placeholder="https://example.com (or a feed URL)"
+            required
+        />
+        <button type="submit" class="btn">add</button>
+    </form>
+</div>
+
+<h2>Existing feeds ({{ feeds|length }})</h2>
+
+{% if feeds %}
+<ul class="feed-list">
+    {% for feed in feeds %}
+    <li class="feed-item">
+        <div class="feed-info">
+            <div class="feed-title">{{ feed.title or "untitled" }}</div>
+            <div class="feed-url">{{ feed.url }}</div>
+        </div>
+        <span class="feed-count">{{ feed.entry_count }} links</span>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="empty">no feeds yet.</div>
+{% endif %} {% endblock %}

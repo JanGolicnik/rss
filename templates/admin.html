@@ -1,244 +1,58 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>blogson · admin</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap');
-
-  :root {
-    --bg: #0c0c0c;
-    --fg: #c8c8c8;
-    --fg-dim: #666;
-    --fg-bright: #e8e8e8;
-    --accent: #ff6600;
-    --link: #88aaff;
-    --red: #cc4444;
-    --red-hover: #ee5555;
-    --border: #222;
-    --input-bg: #111;
-    --btn-bg: #1a1a1a;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--fg);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px;
-    line-height: 1.6;
-    padding: 2rem;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  header {
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 1rem;
-    margin-bottom: 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
-
-  header h1 {
-    font-family: 'Space Mono', monospace;
-    font-size: 1.1rem;
-    color: var(--accent);
-    letter-spacing: 0.05em;
-  }
-
-  header a {
-    color: var(--fg-dim);
-    text-decoration: none;
-    font-size: 0.8rem;
-  }
-
-  header a:hover { color: var(--fg); }
-
-  .flash {
-    background: var(--input-bg);
-    border-left: 3px solid var(--accent);
-    padding: 0.5rem 1rem;
-    margin-bottom: 1.5rem;
-    font-size: 0.85rem;
-  }
-
-  h2 {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.85rem;
-    color: var(--fg-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 1rem;
-  }
-
-  .add-form {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 2.5rem;
-  }
-
-  .add-form input[type="text"] {
-    flex: 1;
-    background: var(--input-bg);
-    border: 1px solid var(--border);
-    color: var(--fg-bright);
-    padding: 0.5rem 0.75rem;
-    font-family: inherit;
-    font-size: 0.85rem;
-    border-radius: 2px;
-    outline: none;
-  }
-
-  .add-form input[type="text"]:focus {
-    border-color: var(--accent);
-  }
-
-  .add-form input[type="text"]::placeholder {
-    color: var(--fg-dim);
-  }
-
-  .btn {
-    background: var(--btn-bg);
-    color: var(--fg);
-    border: 1px solid var(--border);
-    padding: 0.5rem 1rem;
-    font-family: inherit;
-    font-size: 0.8rem;
-    cursor: pointer;
-    border-radius: 2px;
-    transition: all 0.15s;
-  }
-
-  .btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .btn-danger {
-    color: var(--red);
-    border-color: var(--border);
-  }
-
-  .btn-danger:hover {
-    color: var(--red-hover);
-    border-color: var(--red);
-  }
-
-  .feed-list {
-    list-style: none;
-  }
-
-  .feed-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.6rem 0;
-    border-bottom: 1px solid var(--border);
-    gap: 1rem;
-  }
-
-  .feed-item:hover { background: #111; margin: 0 -0.5rem; padding: 0.6rem 0.5rem; border-radius: 2px; }
-
-  .feed-info {
-    min-width: 0;
-    flex: 1;
-  }
-
-  .feed-title {
-    color: var(--fg-bright);
-    font-size: 0.9rem;
-  }
-
-  .feed-url {
-    color: var(--fg-dim);
-    font-size: 0.75rem;
-    word-break: break-all;
-  }
-
-  .feed-count {
-    color: var(--fg-dim);
-    font-size: 0.75rem;
-    white-space: nowrap;
-  }
-
-  .feed-actions {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .actions-bar {
-    margin-bottom: 2rem;
-  }
-
-  .empty {
-    color: var(--fg-dim);
-    padding: 2rem 0;
-    font-style: italic;
-  }
-
-  @media (max-width: 600px) {
-    body { padding: 1rem; }
-    .add-form { flex-direction: column; }
-    .feed-item { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
-    .feed-actions { align-self: flex-end; }
-  }
-</style>
-</head>
-<body>
-
-<header>
-  <h1>blogson · admin</h1>
-  <a href="/">← back to links</a>
-</header>
-
-{% with messages = get_flashed_messages() %}
-  {% for msg in messages %}
-    <div class="flash">{{ msg }}</div>
-  {% endfor %}
-{% endwith %}
-
+{% extends "base.html" %} {% block title %}blogson · admin{% endblock %} {%
+block header_subtitle %}<span class="subtitle">/ admin</span>{% endblock %} {%
+block content %}
 <h2>Add Feed</h2>
 <div class="add-form">
-  <form action="/admin/add" method="post" style="display:contents;">
-    <input type="text" name="url" placeholder="https://example.com/feed.xml" required>
-    <button type="submit" class="btn">add</button>
-  </form>
+    <form
+        action="{{ url_for('add_feed') }}"
+        method="post"
+        style="display: contents"
+    >
+        <input
+            type="text"
+            name="url"
+            placeholder="https://example.com (or a feed URL)"
+            required
+        />
+        <button type="submit" class="btn">add</button>
+    </form>
 </div>
 
 <div class="actions-bar">
-  <form action="/admin/poll" method="post" style="display:inline;">
-    <button type="submit" class="btn">poll all feeds now</button>
-  </form>
+    <form
+        action="{{ url_for('trigger_poll') }}"
+        method="post"
+        style="display: inline"
+    >
+        <button type="submit" class="btn">poll all feeds now</button>
+    </form>
 </div>
 
 <h2>Feeds ({{ feeds|length }})</h2>
 
 {% if feeds %}
 <ul class="feed-list">
-  {% for feed in feeds %}
-  <li class="feed-item">
-    <div class="feed-info">
-      <div class="feed-title">{{ feed.title or "untitled" }}</div>
-      <div class="feed-url">{{ feed.url }}</div>
-    </div>
-    <div class="feed-actions">
-      <span class="feed-count">{{ feed.entry_count }} links</span>
-      <form action="/admin/delete/{{ feed.id }}" method="post"
-            onsubmit="return confirm('Remove this feed and all its entries?');">
-        <button type="submit" class="btn btn-danger">remove</button>
-      </form>
-    </div>
-  </li>
-  {% endfor %}
+    {% for feed in feeds %}
+    <li class="feed-item">
+        <div class="feed-info">
+            <div class="feed-title">{{ feed.title or "untitled" }}</div>
+            <div class="feed-url">{{ feed.url }}</div>
+        </div>
+        <div class="feed-actions">
+            <span class="feed-count">{{ feed.entry_count }} links</span>
+            <form
+                action="{{ url_for('delete_feed', feed_id=feed.id) }}"
+                method="post"
+                onsubmit="
+                    return confirm('Remove this feed and all its entries?');
+                "
+            >
+                <button type="submit" class="btn btn-danger">remove</button>
+            </form>
+        </div>
+    </li>
+    {% endfor %}
 </ul>
 {% else %}
 <div class="empty">no feeds yet. add one above.</div>
-{% endif %}
-
-</body>
-</html>
+{% endif %} {% endblock %}

@@ -1,63 +1,78 @@
-# links
+# blogson
 
-A deliberately dumb RSS link aggregator. Not a reader.
+An RSS link aggregator. Not a reader.
 
-Polls feeds on a timer, dumps links into SQLite, renders them as flat HTML. That's it.
+Polls feeds on a timer, stores links in SQLite, renders them as a flat HTML page.
 
 ## Setup
 
 ```bash
 pip install -r requirements.txt
+cp .env.example .env     # edit credentials, secret key
 python app.py
 ```
 
-Open `http://localhost:5001` for the link dump, `/admin` to manage feeds (HTTP basic auth).
+Runs on port 5001. Pages: `/` (links), `/admin`, `/submit`.
 
 ## Config
 
-Edit the top of `app.py`:
+All in `.env`:
 
-```python
-ADMIN_USER = "admin"
-ADMIN_PASS = "changeme"      # change this
-POLL_INTERVAL = 3600         # seconds between polls (default: 1 hour)
+```
+ADMIN_USER=...
+ADMIN_PASS=...
+SUBMIT_USER=...          # optional — falls back to admin creds
+SUBMIT_PASS=...
+SECRET_KEY=...           # generate: python3 -c "import secrets; print(secrets.token_hex(32))"
+DATABASE=links.db
+POLL_INTERVAL=10800       # seconds (3h)
 ```
 
-Also change `app.secret_key` to something random.
+## Routes
+
+- `/` — main link list. Query params: `range=today|week|month|all`, `feed=<feed title>`.
+- `/random` — opens a random entry (new tab). Weighted by inverse visit count.
+- `/go/<id>` — increments visit count (rate-limited to 1/30s per entry), then redirects.
+- `/feed.xml` — the aggregator's own RSS output.
+- `/favicon/<domain>` — cached favicon proxy.
+- `/admin` — full admin (add, remove, poll-all). Basic auth.
+- `/submit` — add-only panel. Separate basic auth.
 
 ## How it works
 
-- **Polling**: A background thread polls all feeds every `POLL_INTERVAL` seconds.
-  New entries are inserted; duplicates (same feed + URL) are skipped.
-- **Database**: SQLite with WAL mode. Two tables: `feeds` and `entries`.
-- **Frontend**: The index shows the 300 most recent links. Client-side filtering by feed.
-- **Admin**: HTTP basic auth. Add/remove feeds, trigger a manual poll.
-
-## Deploying
-
-This is a single-process Flask app. For a real deploy:
-
-```bash
-pip install gunicorn
-gunicorn -w 1 -b 0.0.0.0:5001 app:app
-```
-
-Use `-w 1` (single worker) so the background poller thread runs once.
-
-Alternatively, rip out the background thread and use a real cron job:
-
-```bash
-# crontab -e
-0 * * * * cd /path/to/rss-aggregator && python -c "from app import poll_all; poll_all()"
-```
+- **Polling**: background thread, every `POLL_INTERVAL` seconds. Sequential.
+- **Adding a feed**: URL is fetched, validated, and autodiscovered if it's a site
+  rather than a feed itself. Tries `<link rel="alternate">` first, then common
+  paths (`/feed`, `/rss`, `/atom.xml`, etc.). Specific error messages on failure.
+- **Favicons**: cached as BLOBs in SQLite on feed add and during poll-all.
+- **Colors**: extracted client-side from each favicon, applied as a gradient left
+  border on entries. Lightness floor so dark icons stay readable.
+- **Keyboard**: `j`/`k` navigate, `Enter` opens, `g` scrolls to top.
 
 ## Structure
 
 ```
-app.py              # everything: routes, polling, db
+app.py                   # routes, polling, db, validation, autodiscovery
 templates/
-  index.html        # the link dump
-  admin.html        # feed management
+  base.html              # shared skeleton
+  index.html             # link list
+  admin.html             # full admin
+  submit.html            # add-only panel
+static/
+  style.css              # shared styles
+  app.js                 # filter + color extraction + keyboard shortcuts
 requirements.txt
-links.db            # created on first run
+.env                     # gitignored, per deploy
+links.db                 # created on first run
 ```
+
+## Deploying
+
+Single-process Flask. In production, gunicorn with one worker so the poller
+thread runs once:
+
+```bash
+gunicorn -w 1 -b 127.0.0.1:5001 app:app
+```
+
+Behind nginx + systemd.
