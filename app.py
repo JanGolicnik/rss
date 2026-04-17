@@ -96,7 +96,6 @@ def init_db():
             FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
             UNIQUE(feed_id, url)
         );
-        CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC);
     """)
 
     # Migrations for existing databases. Each is idempotent via try/except.
@@ -135,6 +134,9 @@ def init_db():
 
     # Remove the unused `color` column on feeds
     migrate("ALTER TABLE feeds DROP COLUMN color")
+
+    # Index on date — created here, after migrations have ensured the column exists
+    migrate("CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC)")
 
     db.commit()
     db.close()
