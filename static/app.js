@@ -10,11 +10,11 @@
 function filterFeed(feedName) {
   var params = new URLSearchParams(window.location.search);
   if (feedName) {
-    params.set("range", "all");
-    params.set("feed", feedName);
+    params.set('range', 'all');
+    params.set('feed', feedName);
   } else {
-    params.delete("feed");
-    if (!params.get("range")) params.set("range", "month");
+    params.delete('feed');
+    if (!params.get('range')) params.set('range', 'month');
   }
   window.location.search = params.toString();
 }
@@ -25,13 +25,13 @@ function filterFeed(feedName) {
 
 (function () {
   var params = new URLSearchParams(window.location.search);
-  var feed = params.get("feed");
+  var feed = params.get('feed');
   if (!feed) return;
 
-  var select = document.querySelector(".feed-select");
+  var select = document.querySelector('.feed-select');
   if (select) select.value = feed;
-  document.querySelectorAll(".entry").forEach(function (entry) {
-    entry.style.display = entry.dataset.feed === feed ? "" : "none";
+  document.querySelectorAll('.entry').forEach(function (entry) {
+    entry.style.display = entry.dataset.feed === feed ? '' : 'none';
   });
 })();
 
@@ -41,8 +41,8 @@ function filterFeed(feedName) {
 
 (function () {
   function getTopColors(img) {
-    var canvas = document.createElement("canvas");
-    var ctx = canvas.getContext("2d");
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
     canvas.width = img.naturalWidth || 16;
     canvas.height = img.naturalHeight || 16;
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -57,10 +57,7 @@ function filterFeed(feedName) {
     // Quantize pixels into buckets
     var buckets = {};
     for (var i = 0; i < data.length; i += 4) {
-      var r = data[i],
-        g = data[i + 1],
-        b = data[i + 2],
-        a = data[i + 3];
+      var r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
       if (a < 128) continue;
       var brightness = (r + g + b) / 3;
       if (brightness > 240 || brightness < 15) continue;
@@ -68,7 +65,7 @@ function filterFeed(feedName) {
       var qr = (r >> 5) << 5;
       var qg = (g >> 5) << 5;
       var qb = (b >> 5) << 5;
-      var key = qr + "," + qg + "," + qb;
+      var key = qr + ',' + qg + ',' + qb;
       if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, count: 0 };
       buckets[key].r += r;
       buckets[key].g += g;
@@ -76,9 +73,7 @@ function filterFeed(feedName) {
       buckets[key].count++;
     }
 
-    var sorted = Object.values(buckets).sort(function (a, b) {
-      return b.count - a.count;
-    });
+    var sorted = Object.values(buckets).sort(function (a, b) { return b.count - a.count; });
     if (sorted.length === 0) return null;
 
     var c1 = sorted[0];
@@ -110,14 +105,9 @@ function filterFeed(feedName) {
   // Convert RGB -> HSL, raise lightness to a minimum, convert back.
   // Keeps the hue so a dark red stays red, just brighter.
   function ensureLightness(c) {
-    var r = c.r / 255,
-      g = c.g / 255,
-      b = c.b / 255;
-    var max = Math.max(r, g, b),
-      min = Math.min(r, g, b);
-    var h,
-      s,
-      l = (max + min) / 2;
+    var r = c.r / 255, g = c.g / 255, b = c.b / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var h, s, l = (max + min) / 2;
 
     if (max === min) {
       h = s = 0;
@@ -125,15 +115,9 @@ function filterFeed(feedName) {
       var d = max - min;
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
       switch (max) {
-        case r:
-          h = (g - b) / d + (g < b ? 6 : 0);
-          break;
-        case g:
-          h = (b - r) / d + 2;
-          break;
-        case b:
-          h = (r - g) / d + 4;
-          break;
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
       }
       h /= 6;
     }
@@ -161,24 +145,21 @@ function filterFeed(feedName) {
   }
 
   function rgb(c) {
-    return "rgb(" + c.r + "," + c.g + "," + c.b + ")";
+    return 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')';
   }
 
   function applyColors(domain, colors) {
     var c1 = rgb(colors[0]);
     var c2 = rgb(colors[1]);
-    document
-      .querySelectorAll('.entry[data-domain="' + domain + '"]')
-      .forEach(function (entry) {
-        entry.style.borderImage =
-          "linear-gradient(to bottom, " + c1 + ", " + c2 + ") 1";
-        var tag = entry.querySelector(".feed-tag");
-        if (tag) tag.style.color = c1;
-      });
+    document.querySelectorAll('.entry[data-domain="' + domain + '"]').forEach(function (entry) {
+      entry.style.borderImage = 'linear-gradient(to bottom, ' + c1 + ', ' + c2 + ') 1';
+      var tag = entry.querySelector('.feed-tag');
+      if (tag) tag.style.color = c1;
+    });
   }
 
   var domains = new Set();
-  document.querySelectorAll(".entry[data-domain]").forEach(function (el) {
+  document.querySelectorAll('.entry[data-domain]').forEach(function (el) {
     domains.add(el.dataset.domain);
   });
 
@@ -188,7 +169,7 @@ function filterFeed(feedName) {
       var colors = getTopColors(img);
       if (colors) applyColors(domain, colors);
     };
-    img.src = "/favicon/" + domain;
+    img.src = '/favicon/' + domain;
   });
 })();
 
@@ -201,10 +182,8 @@ function filterFeed(feedName) {
 
   function visibleEntries() {
     return Array.prototype.filter.call(
-      document.querySelectorAll(".entry"),
-      function (e) {
-        return e.offsetParent !== null;
-      },
+      document.querySelectorAll('.entry'),
+      function (e) { return e.offsetParent !== null; }
     );
   }
 
@@ -212,41 +191,56 @@ function filterFeed(feedName) {
     var entries = visibleEntries();
     if (entries.length === 0) return;
 
-    document.querySelectorAll(".entry.focused").forEach(function (e) {
-      e.classList.remove("focused");
+    document.querySelectorAll('.entry.focused').forEach(function (e) {
+      e.classList.remove('focused');
     });
 
     idx = Math.max(0, Math.min(idx, entries.length - 1));
     focusedIdx = idx;
     var el = entries[idx];
-    el.classList.add("focused");
+    el.classList.add('focused');
 
     var rect = el.getBoundingClientRect();
     if (rect.top < 60 || rect.bottom > window.innerHeight - 40) {
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }
 
-  document.addEventListener("keydown", function (e) {
+  function clearFocus() {
+    document.querySelectorAll('.entry.focused').forEach(function (e) {
+      e.classList.remove('focused');
+    });
+    focusedIdx = -1;
+  }
+
+  document.addEventListener('keydown', function (e) {
     var tag = document.activeElement && document.activeElement.tagName;
-    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    if (e.key === "j") {
+    if (e.key === 'j') {
       e.preventDefault();
       setFocus(focusedIdx < 0 ? 0 : focusedIdx + 1);
-    } else if (e.key === "k") {
+    } else if (e.key === 'k') {
       e.preventDefault();
       setFocus(focusedIdx < 0 ? 0 : focusedIdx - 1);
-    } else if (e.key === "Enter") {
+    } else if (e.key === 'Enter') {
       var entries = visibleEntries();
       if (focusedIdx >= 0 && entries[focusedIdx]) {
         var link = entries[focusedIdx].querySelector('a[href^="/go/"]');
-        if (link) window.open(link.href, "_blank", "noopener");
+        if (link) window.open(link.href, '_blank', 'noopener');
       }
-    } else if (e.key === "g") {
+    } else if (e.key === 'g') {
       e.preventDefault();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      clearFocus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (e.key === 'G') {
+      e.preventDefault();
+      clearFocus();
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      clearFocus();
     }
   });
 })();
