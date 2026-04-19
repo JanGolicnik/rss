@@ -84,12 +84,10 @@ def webhook():
         log.append(f"[{label}] exit={code}\n{out}")
         return code
 
-    step("stash", ["git", "stash", "push", "-m", "auto-deploy"])
-    step("fetch", ["git", "fetch", "origin", BRANCH])
-    pull_code = step("rebase", ["git", "rebase", f"origin/{BRANCH}"])
+    pull_code = step("pull", ["git", "pull"])
 
     if pull_code != 0:
-        log.append("[abort] rebase failed, not restarting service")
+        log.append("[abort] pull failed, not restarting service")
         print("\n".join(log))
         return Response("\n".join(log) + "\n", status=500)
 
