@@ -1,0 +1,13 @@
+[Unit]
+Description=blogson auto-deploy webhook
+After=network.target
+
+[Service]
+User=jan
+WorkingDirectory=/home/jan/rss
+ExecStart=/home/jan/rss/.venv/bin/python deploy.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
