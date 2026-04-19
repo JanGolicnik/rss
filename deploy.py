@@ -84,7 +84,7 @@ def webhook():
         log.append(f"[{label}] exit={code}\n{out}")
         return code
 
-    step("stash", ["git", "stash", "push", "-u", "-m", "auto-deploy"])
+    step("stash", ["git", "stash", "push", "-m", "auto-deploy"])
     step("fetch", ["git", "fetch", "origin", BRANCH])
     pull_code = step("rebase", ["git", "rebase", f"origin/{BRANCH}"])
 
