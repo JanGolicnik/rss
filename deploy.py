@@ -104,6 +104,20 @@ def webhook():
 
     if restart_code != 0:
         return Response(report + "\n", status=500)
+
+    # Kick off a self-restart AFTER the response is sent, so the webhook
+    # can reply 200 before the process dies. This ensures deploy.py changes
+    # take effect on the next push without needing a manual SSH restart.
+    import threading
+
+    threading.Timer(
+        1.0,
+        lambda: subprocess.run(
+            ["sudo", "systemctl", "restart", "blogson-deploy"],
+            timeout=10,
+        ),
+    ).start()
+
     return Response(report + "\n", status=200)
 
 
