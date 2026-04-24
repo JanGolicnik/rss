@@ -802,6 +802,9 @@ def submit_add_feed():
     _try_add_feed(request.form.get("url", ""))
     return redirect(url_for("submit"))
 
+@app.route("/robots.txt")
+def robots():
+    return app.send_static_file("robots.txt")
 
 # ---------------------------------------------------------------------------
 # Startup
