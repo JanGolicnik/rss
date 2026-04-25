@@ -777,6 +777,20 @@ def trigger_poll():
     return redirect(url_for("admin"))
 
 
+@app.route("/admin/clear-visits", methods=["POST"])
+@requires_auth
+def clear_visits():
+    """Reset every entry's visit count and rate-limit timestamp to zero/null."""
+    db = get_db()
+    result = db.execute(
+        "UPDATE entries SET visits = 0, last_visit_at = NULL "
+        "WHERE visits > 0 OR last_visit_at IS NOT NULL"
+    )
+    db.commit()
+    flash(f"Cleared visits on {result.rowcount} entries.")
+    return redirect(url_for("admin"))
+
+
 # ---------------------------------------------------------------------------
 # Submit – add-only admin panel
 # ---------------------------------------------------------------------------
@@ -802,9 +816,11 @@ def submit_add_feed():
     _try_add_feed(request.form.get("url", ""))
     return redirect(url_for("submit"))
 
+
 @app.route("/robots.txt")
 def robots():
     return app.send_static_file("robots.txt")
+
 
 # ---------------------------------------------------------------------------
 # Startup

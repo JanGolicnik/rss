@@ -17,6 +17,10 @@
   <form action="{{ url_for('trigger_poll') }}" method="post" style="display:inline;">
     <button type="submit" class="btn">poll all feeds now</button>
   </form>
+  <form action="{{ url_for('clear_visits') }}" method="post" style="display:inline;"
+        onsubmit="return confirm('Clear all visit counts? This cannot be undone.');">
+    <button type="submit" class="btn btn-danger">clear all visits</button>
+  </form>
 </div>
 
 <h2>Feeds ({{ feeds|length }})</h2>
