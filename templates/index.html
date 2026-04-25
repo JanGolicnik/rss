@@ -16,7 +16,6 @@
 
 {% block content %}
 <div class="filter-bar">
-  <a href="?range=today" {% if time_range == 'today' %}class="active"{% endif %}>today</a>
   <a href="?range=week" {% if time_range == 'week' %}class="active"{% endif %}>week</a>
   <a href="?range=month" {% if time_range == 'month' %}class="active"{% endif %}>month</a>
   <a href="?range=all" {% if time_range == 'all' %}class="active"{% endif %}>all</a>
@@ -51,7 +50,7 @@
       <span class="author">by {{ entry.author | truncate(24) }}</span>
       {% endif %}
       <span class="feed-tag">
-        {{ entry.feed_title or entry.feed_url | truncate(20) }}
+        {% if entry.is_bookmark %}bookmark{% else %}{{ entry.feed_title or entry.feed_url | truncate(20) }}{% endif %}
         {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
       </span>
       {% if entry.date %}

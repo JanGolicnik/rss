@@ -81,6 +81,7 @@ def init_db():
             description TEXT,
             favicon_data BLOB,
             favicon_mime TEXT,
+            is_bookmark INTEGER DEFAULT 0,
             added_at TEXT DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS entries (
@@ -112,6 +113,7 @@ def init_db():
     migrate("ALTER TABLE entries ADD COLUMN tags TEXT")
     migrate("ALTER TABLE feeds ADD COLUMN favicon_data BLOB")
     migrate("ALTER TABLE feeds ADD COLUMN favicon_mime TEXT")
+    migrate("ALTER TABLE feeds ADD COLUMN is_bookmark INTEGER DEFAULT 0")
 
     # Drop old indexes first — SQLite refuses to DROP COLUMN while an index
     # still references it.
@@ -270,7 +272,7 @@ def poll_all():
     """Poll every feed in the database."""
     db = sqlite3.connect(DATABASE)
     db.row_factory = sqlite3.Row
-    feeds = db.execute("SELECT id, url FROM feeds").fetchall()
+    feeds = db.execute("SELECT id, url FROM feeds WHERE is_bookmark = 0").fetchall()
     total = 0
     for feed in feeds:
         n = poll_feed(feed["id"], feed["url"], db)
@@ -298,13 +300,11 @@ def poller_loop():
 @app.route("/")
 def index():
     db = get_db()
-    range_filter = request.args.get("range", "month")
+    range_filter = request.args.get("range", "week")
 
     time_clause = ""
     limit = "LIMIT 300"
-    if range_filter == "today":
-        time_clause = "WHERE e.date >= datetime('now', '-1 day')"
-    elif range_filter == "week":
+    if range_filter == "week":
         time_clause = "WHERE e.date >= datetime('now', '-7 days')"
     elif range_filter == "month":
         time_clause = "WHERE e.date >= datetime('now', '-30 days')"
@@ -315,7 +315,7 @@ def index():
         SELECT e.id, e.url, e.title, e.date, e.visits,
                e.author, e.tags,
                f.title AS feed_title, f.url AS feed_url,
-               f.description AS feed_desc
+               f.description AS feed_desc, f.is_bookmark AS is_bookmark
         FROM entries e
         JOIN feeds f ON e.feed_id = f.id
         {time_clause}
@@ -691,11 +691,56 @@ def _try_add_feed(url: str) -> None:
         flash("Feed already exists.")
 
 
-@app.route("/admin/add", methods=["POST"])
-@requires_auth
-def add_feed():
-    _try_add_feed(request.form.get("url", ""))
-    return redirect(url_for("admin"))
+def _try_add_bookmark(url: str) -> None:
+    """Add a bookmark — a URL that isn't a feed but should appear in the
+    entries list as a one-off 'site' entry."""
+    url = (url or "").strip()
+    if not url:
+        flash("URL is required.")
+        return
+    if not url.startswith(("http://", "https://")):
+        flash("URL must start with http:// or https://")
+        return
+
+    db = get_db()
+
+    existing = db.execute("SELECT 1 FROM feeds WHERE url = ?", (url,)).fetchone()
+    if existing:
+        flash("Already added.")
+        return
+
+    # Verify the URL is reachable — but don't try to parse it as a feed.
+    content, final_url, err = _fetch_url(url)
+    if content is None:
+        flash(err)
+        return
+
+    # Use the post-redirect URL so we store the canonical destination.
+    if final_url != url:
+        existing = db.execute(
+            "SELECT 1 FROM feeds WHERE url = ?", (final_url,)
+        ).fetchone()
+        if existing:
+            flash(f"Already added ({final_url}).")
+            return
+
+    try:
+        db.execute("INSERT INTO feeds (url, is_bookmark) VALUES (?, 1)", (final_url,))
+        db.commit()
+        feed = db.execute("SELECT id FROM feeds WHERE url = ?", (final_url,)).fetchone()
+        if feed:
+            cache_feed_favicon(feed["id"], final_url, db)
+            # Create one synthetic entry so the bookmark shows up in the list
+            now = datetime.now(timezone.utc).isoformat()
+            db.execute(
+                "INSERT INTO entries (feed_id, url, title, date, tags) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (feed["id"], final_url, final_url, now, "site"),
+            )
+            db.commit()
+        flash(f"Added {final_url}")
+    except sqlite3.IntegrityError:
+        flash("Already added.")
 
 
 @app.route("/admin/delete/<int:feed_id>", methods=["POST"])
@@ -715,7 +760,7 @@ def trigger_poll():
     """Poll all feeds for new entries, and backfill author/tags on existing
     entries that don't have them yet."""
     db = get_db()
-    feeds = db.execute("SELECT id, url FROM feeds").fetchall()
+    feeds = db.execute("SELECT id, url FROM feeds WHERE is_bookmark = 0").fetchall()
     backfilled = 0
 
     for feed in feeds:
@@ -813,7 +858,11 @@ def submit():
 @app.route("/submit/add", methods=["POST"])
 @requires_submit_auth
 def submit_add_feed():
-    _try_add_feed(request.form.get("url", ""))
+    url = request.form.get("url", "")
+    if request.form.get("is_bookmark"):
+        _try_add_bookmark(url)
+    else:
+        _try_add_feed(url)
     return redirect(url_for("submit"))
 
 

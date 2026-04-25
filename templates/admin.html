@@ -5,14 +5,6 @@
 {% block header_subtitle %}<span class="subtitle">/ admin</span>{% endblock %}
 
 {% block content %}
-<h2>Add Feed</h2>
-<div class="add-form">
-  <form action="{{ url_for('add_feed') }}" method="post" style="display:contents;">
-    <input type="text" name="url" placeholder="https://example.com (or a feed URL)" required>
-    <button type="submit" class="btn">add</button>
-  </form>
-</div>
-
 <div class="actions-bar">
   <form action="{{ url_for('trigger_poll') }}" method="post" style="display:inline;">
     <button type="submit" class="btn">poll all feeds now</button>

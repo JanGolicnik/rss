@@ -29,7 +29,7 @@ function filterFeed(feedName) {
     params.set("feed", feedName);
   } else {
     params.delete("feed");
-    if (!params.get("range")) params.set("range", "month");
+    if (!params.get("range")) params.set("range", "week");
   }
   window.location.search = params.toString();
 }

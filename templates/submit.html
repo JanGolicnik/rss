@@ -9,6 +9,9 @@
 <div class="add-form">
   <form action="{{ url_for('submit_add_feed') }}" method="post" style="display:contents;">
     <input type="text" name="url" placeholder="https://example.com (or a feed URL)" required>
+    <label class="checkbox-label">
+      <input type="checkbox" name="is_bookmark"> bookmark
+    </label>
     <button type="submit" class="btn">add</button>
   </form>
 </div>
