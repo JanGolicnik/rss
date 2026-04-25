@@ -301,31 +301,41 @@ def poller_loop():
 def index():
     db = get_db()
     range_filter = request.args.get("range", "week")
+    sites_only = request.args.get("sites_only", "0") == "1"
 
-    time_clause = ""
+    conditions = []
     limit = "LIMIT 300"
     if range_filter == "week":
-        time_clause = "WHERE e.date >= datetime('now', '-7 days')"
+        conditions.append("e.date >= datetime('now', '-7 days')")
     elif range_filter == "month":
-        time_clause = "WHERE e.date >= datetime('now', '-30 days')"
+        conditions.append("e.date >= datetime('now', '-30 days')")
     elif range_filter == "all":
         limit = ""
 
-    entries = db.execute(f"""
-        SELECT e.id, e.url, e.title, e.date, e.visits,
-               e.author, e.tags,
-               f.title AS feed_title, f.url AS feed_url,
-               f.description AS feed_desc, f.is_bookmark AS is_bookmark
-        FROM entries e
-        JOIN feeds f ON e.feed_id = f.id
-        {time_clause}
-        ORDER BY e.date DESC
-        {limit}
-    """).fetchall()
+    if sites_only:
+        conditions.append("is_bookmark = 1")
+
+    sql = f"""
+                SELECT e.id, e.url, e.title, e.date, e.visits,
+                       e.author, e.tags,
+                       f.title AS feed_title, f.url AS feed_url,
+                       f.description AS feed_desc, f.is_bookmark AS is_bookmark
+                FROM entries e
+                JOIN feeds f ON e.feed_id = f.id
+                {"WHERE " + " AND ".join(conditions) if len(conditions) > 0 else ""}
+                ORDER BY e.date DESC
+                {limit}
+            """
+
+    entries = db.execute(sql).fetchall()
 
     feeds = db.execute("SELECT * FROM feeds ORDER BY title, url").fetchall()
     return render_template(
-        "index.html", entries=entries, feeds=feeds, time_range=range_filter
+        "index.html",
+        entries=entries,
+        feeds=feeds,
+        time_range=range_filter,
+        sites_only=sites_only,
     )
 
 

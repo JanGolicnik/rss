@@ -16,9 +16,10 @@
 
 {% block content %}
 <div class="filter-bar">
-  <a href="?range=week" {% if time_range == 'week' %}class="active"{% endif %}>week</a>
-  <a href="?range=month" {% if time_range == 'month' %}class="active"{% endif %}>month</a>
-  <a href="?range=all" {% if time_range == 'all' %}class="active"{% endif %}>all</a>
+  <a href="#" {% if time_range == 'week' %}class="active"{% endif %} onclick="filterTime('week')">week</a>
+  <a href="#" {% if time_range == 'month' %}class="active"{% endif %} onclick="filterTime('month')">month</a>
+  <a href="#" {% if time_range == 'all' %}class="active"{% endif %} onclick="filterTime('all')">all</a>
+  <a href="#" {% if sites_only %} class="active" {% endif %} onclick="filterSites()">sites</a>
   {% if feeds %}
   <select class="feed-select" onchange="filterFeed(this.value)">
     <option value="">all feeds</option>

@@ -34,6 +34,22 @@ function filterFeed(feedName) {
   window.location.search = params.toString();
 }
 
+function filterSites() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get("sites_only")) {
+    params.delete("sites_only");
+  } else {
+    params.set("sites_only", "1");
+  }
+  window.location.search = params.toString();
+}
+
+function filterTime(time) {
+  var params = new URLSearchParams(window.location.search);
+  params.set("range", time);
+  window.location.search = params.toString();
+}
+
 // -----------------------------------------------------------------------------
 // Restore feed filter from URL on page load
 // -----------------------------------------------------------------------------
