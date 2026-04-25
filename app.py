@@ -153,10 +153,6 @@ def check_auth(username, password):
     return username == ADMIN_USER and password == ADMIN_PASS
 
 
-def check_submit_auth(username, password):
-    return username == SUBMIT_USER and password == SUBMIT_PASS
-
-
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -166,21 +162,6 @@ def requires_auth(f):
                 "Login required.",
                 401,
                 {"WWW-Authenticate": 'Basic realm="Admin"'},
-            )
-        return f(*args, **kwargs)
-
-    return decorated
-
-
-def requires_submit_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_submit_auth(auth.username, auth.password):
-            return Response(
-                "Login required.",
-                401,
-                {"WWW-Authenticate": 'Basic realm="Submit"'},
             )
         return f(*args, **kwargs)
 
@@ -852,7 +833,6 @@ def clear_visits():
 
 
 @app.route("/submit")
-@requires_submit_auth
 def submit():
     db = get_db()
     feeds = db.execute("""
@@ -866,7 +846,6 @@ def submit():
 
 
 @app.route("/submit/add", methods=["POST"])
-@requires_submit_auth
 def submit_add_feed():
     url = request.form.get("url", "")
     if request.form.get("is_bookmark"):
