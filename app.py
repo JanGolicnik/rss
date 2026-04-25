@@ -528,7 +528,7 @@ def _fetch_url(url: str):
     content and final_url are None."""
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "blogson/1.0"})
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=2) as resp:
             return resp.read(2_000_000), resp.geturl(), None
     except urllib.error.HTTPError as e:
         return None, None, f"Server returned {e.code}"
@@ -616,8 +616,6 @@ def validate_feed(url: str):
 
     # If the URL is itself a feed, we're done (using the final URL after redirects)
     if _is_valid_feed(parsed):
-        if not parsed.entries:
-            return True, "Added, but the feed has no entries yet.", final_url
         return True, "ok", final_url
 
     # Not a feed — try to discover one from the page.
@@ -626,7 +624,7 @@ def validate_feed(url: str):
     if discovered:
         return True, f"Discovered feed at {discovered}", discovered
 
-    return False, "That URL isn't a feed, and I couldn't find one on the page.", None
+    return False, "No feed found", None
 
 
 def _try_add_feed(url: str) -> None:
@@ -848,7 +846,7 @@ def submit():
 @app.route("/submit/add", methods=["POST"])
 def submit_add_feed():
     url = request.form.get("url", "")
-    if request.form.get("is_bookmark"):
+    if request.form.get("no_rss"):
         _try_add_bookmark(url)
     else:
         _try_add_feed(url)
