@@ -199,11 +199,11 @@ footer a {
     padding: 0.5rem;
     border-bottom: 1px solid var(--border);
     border-left: 3px solid transparent;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 1rem;
     align-items: baseline;
     transition: border-color 0.3s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .entry:hover,
@@ -241,6 +241,7 @@ footer a {
     cursor: default;
     position: relative;
     transition: color 0.3s;
+    width: fit-content;
 }
 
 .entry .date,
@@ -263,20 +264,27 @@ footer a {
     align-items: baseline;
     gap: 0.6rem;
     min-width: 0;
+    width: 100%;
+}
+
+.entry-info .date {
+    margin-left: auto;
 }
 
 .entry-main {
-    min-width: 0;
     display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
+    flex-direction: row;
+    gap: 1rem;
+    width: 100%;
 }
 
 .entry-tags {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    margin-left: 1.4rem; /* aligns with title after the favicon */
+    flex-direction: row;
+    gap: 0.25rem;
+    height: fit-content;
+    overflow: scroll;
+    max-width: 300px;
 }
 
 .tag {
@@ -299,12 +307,16 @@ footer a {
     font-style: italic;
     white-space: nowrap;
     opacity: 0.8;
+    margin-left: auto;
 }
 
-.entry-right {
+.entry-info {
     display: flex;
     align-items: baseline;
     gap: 0.8rem;
+}
+
+.entry-info .date {
 }
 
 .favicon {
@@ -508,5 +520,8 @@ h2 {
     }
     .feed-actions {
         align-self: flex-end;
+    }
+    .entry-tags {
+        display: none;
     }
 }

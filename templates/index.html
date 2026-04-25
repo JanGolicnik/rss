@@ -48,17 +48,20 @@
         {% if tag_list|length > 4 %}<span class="tag tag-more">+{{ tag_list|length - 4 }}</span>{% endif %}
       </div>
       {% endif %}
-      <span class="feed-tag">
-          {% if entry.is_bookmark %}site{% else %}{{ entry.feed_title or entry.feed_url | truncate(20) }}{% endif %}
-          {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
-      </span>
-      {% if entry.visits and entry.visits > 0 %}
-      <span class="visits" title="{{ entry.visits }} visit{{ 's' if entry.visits != 1 else '' }}">{{ entry.visits }} <span class="eye">👁</span></span>
+      {% if entry.date %}
+      <span class="date">{{ entry.date[:10] }}</span>
       {% endif %}
     </div>
-    <div class="entry-right">
-        {% if entry.date %}
-        <span class="date">{{ entry.date[:10] }}</span>
+    <div class="entry-info">
+        <span class="feed-tag">
+            {% if entry.is_bookmark %}site{% else %}{{ entry.feed_title or entry.feed_url | truncate(20) }}{% endif %}
+            {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
+        </span>
+        {% if entry.visits and entry.visits > 0 %}
+        <span class="visits" title="{{ entry.visits }} visit{{ 's' if entry.visits != 1 else '' }}">{{ entry.visits }} <span class="eye">👁</span></span>
+        {% endif %}
+        {% if entry.author %}
+        <span class="author">by {{ entry.author }}</span>
         {% endif %}
     </div>
   </div>
