@@ -323,13 +323,10 @@ def index():
 @app.route("/random")
 def random_link():
     db = get_db()
-    # Weight by 1/(visits+1) so less-visited entries are more likely.
-    rows = db.execute("SELECT id, visits FROM entries").fetchall()
+    rows = db.execute("SELECT id FROM entries ORDER BY RANDOM() LIMIT 1").fetchall()
     if not rows:
         return redirect(url_for("index"))
-    weights = [1.0 / (r["visits"] + 1) for r in rows]
-    chosen = random.choices(rows, weights=weights, k=1)[0]
-    return redirect(url_for("go", entry_id=chosen["id"]))
+    return redirect(url_for("go", entry_id=rows[0]["id"]))
 
 
 @app.route("/go/<int:entry_id>")
