@@ -36,7 +36,7 @@
     <div class="entry-main">
       <div class="entry-info">
         <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="" loading="lazy">
-        <a href="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
+        <a href="{{ entry.url }}" data-go="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
       </div>
       {% if entry.tags %}
       {% set tag_list = entry.tags.split(', ') %}
