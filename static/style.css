@@ -59,20 +59,25 @@ header .subtitle {
 }
 
 /* Index uses a flex header with a right-hand group */
-header.with-right {
+header.with-top {
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
     align-items: baseline;
 }
 
-.header-right {
+.header-top {
     display: flex;
     align-items: baseline;
 }
 
-header .left {
+header .top {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+}
+
+header .right {
+    margin-left: auto;
 }
 
 header .meta {

@@ -5,15 +5,15 @@
 {% endblock %}
 
 {% block header %}
-<header class="with-right">
-    <div class="left">
+<header class="with-top">
+    <div class="top">
         <h1><a href="/" class="brand-link">blogson</a></h1>
-        <span class="meta">{{ feeds|length }} feeds, {{ entries|length }} links</span>
+        <div class="right">
+          <a href="/random" class="header-btn" target="_blank" rel="noopener">~ take me somewhere ~</a>
+          <a href="/submit" class="header-btn" >submit</a>
+        </div>
     </div>
-    <div class="header-right">
-      <a href="/random" class="header-btn" target="_blank" rel="noopener">~ take me somewhere ~</a>
-      <a href="/submit" class="header-btn" >submit</a>
-    </div>
+    <span class="meta">{{ feeds|length }} feeds, {{ entries|length }} links</span>
 </header>
 {% endblock %}
 
