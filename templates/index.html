@@ -6,12 +6,14 @@
 
 {% block header %}
 <header class="with-right">
-  <h1><a href="/" class="brand-link">blogson</a></h1>
-  <div class="header-right">
-    <a href="/random" class="random-btn" target="_blank" rel="noopener">~ take me somewhere ~</a>
-    <a href="/submit" class="random-btn" >submit</a> ·
-    <span class="meta">{{ entries|length }} links from {{ feeds|length }} feeds</span>
-  </div>
+    <div class="left">
+        <h1><a href="/" class="brand-link">blogson</a></h1>
+        <span class="meta">{{ feeds|length }} feeds, {{ entries|length }} links</span>
+    </div>
+    <div class="header-right">
+      <a href="/random" class="header-btn" target="_blank" rel="noopener">~ take me somewhere ~</a>
+      <a href="/submit" class="header-btn" >submit</a>
+    </div>
 </header>
 {% endblock %}
 
@@ -39,7 +41,7 @@
         <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="" loading="lazy">
         <a href="{{ entry.url }}" data-go="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
       </div>
-      {% if entry.tags %}
+      {% if entry.tags and not entry.is_bookmark %}
       {% set tag_list = entry.tags.split(', ') %}
       <div class="entry-tags">
         {% for tag in tag_list[:4] %}<span class="tag">{{ tag }}</span>{% endfor %}
@@ -48,9 +50,6 @@
       {% endif %}
     </div>
     <div class="entry-right">
-      {% if entry.author %}
-      <span class="author">by {{ entry.author | truncate(24) }}</span>
-      {% endif %}
       <span class="feed-tag">
         {% if entry.is_bookmark %}site{% else %}{{ entry.feed_title or entry.feed_url | truncate(20) }}{% endif %}
         {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
