@@ -130,7 +130,7 @@ footer a {
     color: var(--fg-dim);
     text-decoration: none;
     border: 1px dashed var(--border);
-    padding: 0.2rem 0.2rem;
+    padding: 0.2rem 0.6rem;
     border-radius: 3px;
     transition: all 0.2s;
     white-space: nowrap;
