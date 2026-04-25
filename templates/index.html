@@ -50,7 +50,7 @@
       {% if entry.author %}
       <span class="author">by {{ entry.author | truncate(24) }}</span>
       {% endif %}
-      <span class="feed-tag"></span>
+      <span class="feed-tag">
         {% if entry.is_bookmark %}site{% else %}{{ entry.feed_title or entry.feed_url | truncate(20) }}{% endif %}
         {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
       </span>
