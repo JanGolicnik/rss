@@ -268,8 +268,7 @@ footer a {
     display: flex;
     align-items: baseline;
     gap: 0.6rem;
-    min-width: 0;
-    width: 100%;
+    flex: 1;
 }
 
 .entry-info .date {
@@ -279,7 +278,6 @@ footer a {
 .entry-main {
     display: flex;
     flex-direction: row;
-    gap: 1rem;
     width: 100%;
 }
 
@@ -289,7 +287,8 @@ footer a {
     gap: 0.25rem;
     height: fit-content;
     overflow: scroll;
-    max-width: 300px;
+    flex: 0 0 auto;
+    margin-right: 0.5rem;
 }
 
 .tag {
