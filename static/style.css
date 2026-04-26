@@ -74,10 +74,9 @@ header.with-top {
 header .top {
     display: flex;
     flex-direction: row;
-}
-
-header .right {
-    margin-left: auto;
+    justify-content: space-between;
+    align-items: baseline;
+    width: 100%;
 }
 
 header .meta {
