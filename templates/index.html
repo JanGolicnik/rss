@@ -1,9 +1,5 @@
 {% extends "base.html" %}
 
-{% block head_extra %}
-<link rel="alternate" type="application/rss+xml" title="blogson" href="{{ url_for('rss_feed') }}">
-{% endblock %}
-
 {% block header %}
 <header class="with-top">
     <div class="top">
@@ -38,7 +34,7 @@
   <div class="entry" data-feed="{{ entry.feed_title or entry.feed_url }}" data-domain="{{ entry.url.split('/')[2] }}">
     <div class="entry-main">
       <div class="entry-info">
-        <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="" loading="lazy">
+        <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="favicon" loading="lazy">
         <a href="{{ entry.url }}" data-go="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
       </div>
       {% if entry.tags and not entry.is_bookmark %}
@@ -55,7 +51,6 @@
     <div class="entry-info">
         <span class="feed-tag">
             {% if entry.is_bookmark %}site{% else %}{{ entry.feed_title or entry.feed_url | truncate(20) }}{% endif %}
-            {% if entry.feed_desc %}<span class="tooltip">{{ entry.feed_desc }}</span>{% endif %}
         </span>
         {% if entry.visits and entry.visits > 0 %}
         <span class="visits" title="{{ entry.visits }} visit{{ 's' if entry.visits != 1 else '' }}">{{ entry.visits }} <span class="eye">👁</span></span>

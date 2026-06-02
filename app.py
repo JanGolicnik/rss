@@ -1,11 +1,4 @@
-"""
-RSS Link Aggregator
-A deliberately simple link dump. Not a reader.
-Polls feeds, stores links in SQLite, renders them as flat HTML.
-"""
-
 import os
-import random
 import re
 import sqlite3
 import threading
@@ -20,16 +13,9 @@ from urllib.parse import urljoin, urlparse
 import feedparser
 from flask import Flask, Response, flash, g, redirect, render_template, request, url_for
 
-# ---------------------------------------------------------------------------
-# Config – loaded from .env file next to app.py
-# ---------------------------------------------------------------------------
-
 
 def load_env(path=".env"):
-    """Read KEY=VALUE lines from a file into os.environ."""
     p = Path(__file__).parent / path
-    if not p.exists():
-        raise SystemExit(f"Missing {p} — copy .env.example and fill it in.")
     for line in p.read_text().splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
@@ -47,12 +33,9 @@ SUBMIT_USER = os.environ.get("SUBMIT_USER", ADMIN_USER)
 SUBMIT_PASS = os.environ.get("SUBMIT_PASS", ADMIN_PASS)
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "3600"))
 
+
 app = Flask(__name__)
 app.secret_key = os.environ["SECRET_KEY"]
-
-# ---------------------------------------------------------------------------
-# Database helpers
-# ---------------------------------------------------------------------------
 
 
 def get_db():
@@ -71,7 +54,6 @@ def close_db(exc):
 
 
 def init_db():
-    """Create tables if they don't exist."""
     db = sqlite3.connect(DATABASE)
     db.executescript("""
         CREATE TABLE IF NOT EXISTS feeds (
@@ -99,7 +81,6 @@ def init_db():
         );
     """)
 
-    # Migrations for existing databases. Each is idempotent via try/except.
     def migrate(sql):
         try:
             db.execute(sql)
@@ -115,13 +96,9 @@ def init_db():
     migrate("ALTER TABLE feeds ADD COLUMN favicon_mime TEXT")
     migrate("ALTER TABLE feeds ADD COLUMN is_bookmark INTEGER DEFAULT 0")
 
-    # Drop old indexes first — SQLite refuses to DROP COLUMN while an index
-    # still references it.
     migrate("DROP INDEX IF EXISTS idx_entries_fetched")
     migrate("DROP INDEX IF EXISTS idx_entries_published")
 
-    # Unify published + fetched_at into a single `date` column.
-    # Add it, backfill from COALESCE(published, fetched_at), drop the old ones.
     migrate("ALTER TABLE entries ADD COLUMN date TEXT")
     try:
         db.execute(
@@ -129,24 +106,16 @@ def init_db():
             "WHERE date IS NULL"
         )
     except sqlite3.OperationalError:
-        # Old columns don't exist — fresh install, nothing to backfill
         pass
     migrate("ALTER TABLE entries DROP COLUMN published")
     migrate("ALTER TABLE entries DROP COLUMN fetched_at")
 
-    # Remove the unused `color` column on feeds
     migrate("ALTER TABLE feeds DROP COLUMN color")
 
-    # Index on date — created here, after migrations have ensured the column exists
     migrate("CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC)")
 
     db.commit()
     db.close()
-
-
-# ---------------------------------------------------------------------------
-# Auth
-# ---------------------------------------------------------------------------
 
 
 def check_auth(username, password):
@@ -168,20 +137,13 @@ def requires_auth(f):
     return decorated
 
 
-# ---------------------------------------------------------------------------
-# Feed polling
-# ---------------------------------------------------------------------------
-
-
 def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
-    """Fetch a single feed, insert new entries. Returns count of new items."""
     try:
         parsed = feedparser.parse(feed_url)
     except Exception as e:
         print(f"[poll] error fetching {feed_url}: {e}")
         return 0
 
-    # Update feed metadata
     updates = {}
     if parsed.feed.get("title"):
         updates["title"] = parsed.feed.title
@@ -202,7 +164,6 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
             continue
         title = entry.get("title", link)
 
-        # Try to get a published date; fall back to current time.
         date = None
         for key in ("published_parsed", "updated_parsed"):
             tp = entry.get(key)
@@ -215,13 +176,10 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
         if date is None:
             date = datetime.now(timezone.utc).isoformat()
 
-        # Author: feedparser normalizes this from various fields
-        # (dc:creator, atom:author, author, etc.)
         author = entry.get("author") or None
         if author:
             author = author.strip() or None
 
-        # Tags/categories: feedparser gives us a list of dicts with 'term' keys
         tags = None
         raw_tags = entry.get("tags", [])
         if raw_tags:
@@ -250,7 +208,6 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
 
 
 def poll_all():
-    """Poll every feed in the database."""
     db = sqlite3.connect(DATABASE)
     db.row_factory = sqlite3.Row
     feeds = db.execute("SELECT id, url FROM feeds WHERE is_bookmark = 0").fetchall()
@@ -264,18 +221,12 @@ def poll_all():
 
 
 def poller_loop():
-    """Background thread: poll forever."""
     while True:
         try:
             poll_all()
         except Exception as e:
             print(f"[poll] unhandled error: {e}")
         time.sleep(POLL_INTERVAL)
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 
 @app.route("/")
@@ -331,8 +282,6 @@ def random_link():
 
 @app.route("/go/<int:entry_id>")
 def go(entry_id):
-    """Redirect to an entry's URL, incrementing its visit count
-    (rate-limited to 1 increment per 30s per entry)."""
     db = get_db()
     entry = db.execute(
         "SELECT url, last_visit_at FROM entries WHERE id = ?", (entry_id,)
@@ -340,7 +289,6 @@ def go(entry_id):
     if not entry:
         return redirect(url_for("index"))
 
-    # Rate limit: only increment if last visit was >30s ago (or never)
     should_count = True
     if entry["last_visit_at"]:
         last = db.execute(
@@ -369,7 +317,6 @@ TRANSPARENT_PIXEL = (
 
 
 def fetch_favicon(domain: str):
-    """Fetch a favicon for a domain. Returns (bytes, mime_type) or (None, None)."""
     try:
         url = f"https://www.google.com/s2/favicons?sz=32&domain={domain}"
         req = urllib.request.Request(url, headers={"User-Agent": "rss-aggregator/1.0"})
@@ -382,8 +329,6 @@ def fetch_favicon(domain: str):
 
 
 def cache_feed_favicon(feed_id: int, feed_url: str, db: sqlite3.Connection):
-    """Fetch and store a favicon for a feed. Always writes something (even
-    if the fetch fails) so we don't retry forever."""
     domain = urlparse(feed_url).netloc
     if not domain:
         return
@@ -399,11 +344,7 @@ def cache_feed_favicon(feed_id: int, feed_url: str, db: sqlite3.Connection):
 
 @app.route("/favicon/<path:domain>")
 def favicon_proxy(domain):
-    """Serve a cached favicon from the DB, falling back to a live Google
-    lookup for domains we haven't cached yet (e.g. link entries from
-    feeds whose domain differs)."""
     db = get_db()
-    # Try the cached one first: match any feed whose URL contains this domain
     row = db.execute(
         "SELECT favicon_data, favicon_mime FROM feeds "
         "WHERE url LIKE ? AND favicon_data IS NOT NULL LIMIT 1",
@@ -416,7 +357,6 @@ def favicon_proxy(domain):
             headers={"Cache-Control": "public, max-age=604800"},
         )
 
-    # Fallback: live fetch (for entry domains that aren't the feed domain)
     data, mime = fetch_favicon(domain)
     if data is None:
         data = TRANSPARENT_PIXEL
@@ -424,67 +364,6 @@ def favicon_proxy(domain):
     return Response(
         data, mimetype=mime, headers={"Cache-Control": "public, max-age=604800"}
     )
-
-
-@app.route("/feed.xml")
-def rss_feed():
-    db = get_db()
-    entries = db.execute("""
-        SELECT e.url, e.title, e.date,
-               f.title AS feed_title
-        FROM entries e
-        JOIN feeds f ON e.feed_id = f.id
-        ORDER BY e.date DESC
-        LIMIT 50
-    """).fetchall()
-
-    site_url = request.url_root.rstrip("/")
-    now = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
-
-    items = []
-    for e in entries:
-        pub = ""
-        if e["date"]:
-            try:
-                dt = datetime.fromisoformat(e["date"])
-                pub = dt.strftime("%a, %d %b %Y %H:%M:%S +0000")
-            except Exception:
-                pub = e["date"]
-
-        title = (
-            (e["title"] or e["url"])
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
-        link = e["url"].replace("&", "&amp;")
-        source = (
-            (e["feed_title"] or "")
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
-
-        items.append(f"""    <item>
-      <title>{title}</title>
-      <link>{link}</link>
-      <guid>{link}</guid>
-      {f"<pubDate>{pub}</pubDate>" if pub else ""}
-      {f"<category>{source}</category>" if source else ""}
-    </item>""")
-
-    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
-    <title>blogson</title>
-    <link>{site_url}</link>
-    <description>blogson rss aggregator</description>
-    <lastBuildDate>{now}</lastBuildDate>
-{chr(10).join(items)}
-  </channel>
-</rss>"""
-
-    return Response(xml, mimetype="application/rss+xml")
 
 
 @app.route("/admin")
@@ -501,10 +380,6 @@ def admin():
     return render_template("admin.html", feeds=feeds)
 
 
-# ---------------------------------------------------------------------------
-# Feed validation & autodiscovery
-# ---------------------------------------------------------------------------
-
 COMMON_FEED_PATHS = [
     "/feed",
     "/feed/",
@@ -514,15 +389,12 @@ COMMON_FEED_PATHS = [
     "/rss.xml",
     "/atom.xml",
     "/index.xml",
-    "/feeds/posts/default",  # blogspot
-    "/?feed=rss2",  # older wordpress
+    "/feeds/posts/default",
+    "/?feed=rss2",
 ]
 
 
 def _fetch_url(url: str):
-    """Fetch a URL, following redirects. Returns (content, final_url, error).
-    On success error is None and content/final_url are set; on failure
-    content and final_url are None."""
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "blogson/1.0"})
         with urllib.request.urlopen(req, timeout=2) as resp:
@@ -536,24 +408,15 @@ def _fetch_url(url: str):
 
 
 def _is_valid_feed(parsed) -> bool:
-    """True if feedparser's output looks like an actual feed.
-    We accept anything with a 'version' field (set even for empty feeds)
-    or entries."""
     return bool(parsed.entries) or bool(parsed.get("version"))
 
 
 def discover_feed(page_url: str, html_bytes: bytes) -> str | None:
-    """Given a site's HTML, try to find a linked RSS/Atom feed.
-    Falls back to trying common feed paths against the site root.
-    Returns a feed URL or None."""
     try:
         html = html_bytes.decode("utf-8", errors="ignore")
     except Exception:
         html = ""
 
-    # 1. <link rel="alternate" type="application/rss+xml" href="...">
-    #    Also matches atom+xml and "application/feed+json" where it exists.
-    #    Regex is deliberately loose — attribute order varies by site.
     link_re = re.compile(
         r"<link\b[^>]*?"
         r'(?:rel=["\']alternate["\'][^>]*?type=["\']application/(?:rss|atom)\+xml["\']'
@@ -561,12 +424,10 @@ def discover_feed(page_url: str, html_bytes: bytes) -> str | None:
         r'[^>]*?href=["\']([^"\']+)["\']',
         re.IGNORECASE,
     )
-    # Simpler fallback if the above misses unusual orderings:
     simple_re = re.compile(
         r'<link\b[^>]*?type=["\']application/(?:rss|atom)\+xml["\'][^>]*?href=["\']([^"\']+)["\']',
         re.IGNORECASE,
     )
-    # Also try href-before-type
     href_first_re = re.compile(
         r'<link\b[^>]*?href=["\']([^"\']+)["\'][^>]*?type=["\']application/(?:rss|atom)\+xml["\']',
         re.IGNORECASE,
@@ -580,7 +441,6 @@ def discover_feed(page_url: str, html_bytes: bytes) -> str | None:
             if content and _is_valid_feed(feedparser.parse(content)):
                 return final_url
 
-    # 2. Try common feed paths on the same host
     parsed_url = urlparse(page_url)
     root = f"{parsed_url.scheme}://{parsed_url.netloc}"
     for path in COMMON_FEED_PATHS:
@@ -593,15 +453,6 @@ def discover_feed(page_url: str, html_bytes: bytes) -> str | None:
 
 
 def validate_feed(url: str):
-    """Validate a URL as a feed, discovering one from a site page if needed.
-
-    Returns (ok, message, resolved_url) where:
-      - ok: True if we ended up with a usable feed
-      - message: user-facing status string
-      - resolved_url: the actual feed URL after following any redirects and
-        autodiscovery. May differ from input. None on failure.
-    """
-    # Shape check
     if not url.startswith(("http://", "https://")):
         return False, "URL must start with http:// or https://", None
 
@@ -611,12 +462,9 @@ def validate_feed(url: str):
 
     parsed = feedparser.parse(content)
 
-    # If the URL is itself a feed, we're done (using the final URL after redirects)
     if _is_valid_feed(parsed):
         return True, "ok", final_url
 
-    # Not a feed — try to discover one from the page.
-    # Pass the final URL so relative hrefs resolve against the redirected host.
     discovered = discover_feed(final_url, content)
     if discovered:
         return True, f"Discovered feed at {discovered}", discovered
@@ -625,9 +473,6 @@ def validate_feed(url: str):
 
 
 def _try_add_feed(url: str) -> None:
-    """Shared logic: validate a URL as a feed (discovering one from a site
-    page if needed), insert it, poll it once, cache its favicon, and flash
-    a status message."""
     url = (url or "").strip()
     if not url:
         flash("URL is required.")
@@ -635,7 +480,6 @@ def _try_add_feed(url: str) -> None:
 
     db = get_db()
 
-    # Check for existing first so we don't make a network call if not needed
     existing = db.execute("SELECT 1 FROM feeds WHERE url = ?", (url,)).fetchone()
     if existing:
         flash("Feed already exists.")
@@ -646,8 +490,6 @@ def _try_add_feed(url: str) -> None:
         flash(message)
         return
 
-    # The resolved URL might differ from the input (autodiscovery).
-    # Re-check for duplicates against the resolved URL.
     if resolved_url != url:
         existing = db.execute(
             "SELECT 1 FROM feeds WHERE url = ?", (resolved_url,)
@@ -678,8 +520,6 @@ def _try_add_feed(url: str) -> None:
 
 
 def _try_add_bookmark(url: str) -> None:
-    """Add a bookmark — a URL that isn't a feed but should appear in the
-    entries list as a one-off 'site' entry."""
     url = (url or "").strip()
     if not url:
         flash("URL is required.")
@@ -695,13 +535,11 @@ def _try_add_bookmark(url: str) -> None:
         flash("Already added.")
         return
 
-    # Verify the URL is reachable — but don't try to parse it as a feed.
     content, final_url, err = _fetch_url(url)
     if content is None:
         flash(err)
         return
 
-    # Use the post-redirect URL so we store the canonical destination.
     if final_url != url:
         existing = db.execute(
             "SELECT 1 FROM feeds WHERE url = ?", (final_url,)
@@ -716,7 +554,6 @@ def _try_add_bookmark(url: str) -> None:
         feed = db.execute("SELECT id FROM feeds WHERE url = ?", (final_url,)).fetchone()
         if feed:
             cache_feed_favicon(feed["id"], final_url, db)
-            # Create one synthetic entry so the bookmark shows up in the list
             now = datetime.now(timezone.utc).isoformat()
             db.execute(
                 "INSERT INTO entries (feed_id, url, title, date, tags) "
@@ -743,8 +580,6 @@ def delete_feed(feed_id):
 @app.route("/admin/poll", methods=["POST"])
 @requires_auth
 def trigger_poll():
-    """Poll all feeds for new entries, and backfill author/tags on existing
-    entries that don't have them yet."""
     db = get_db()
     feeds = db.execute("SELECT id, url FROM feeds WHERE is_bookmark = 0").fetchall()
     backfilled = 0
@@ -789,8 +624,6 @@ def trigger_poll():
 
     db.commit()
 
-    # Refresh all favicons (this catches feeds added before caching existed,
-    # and picks up any favicon changes)
     favicons_cached = 0
     for feed in feeds:
         try:
@@ -811,7 +644,6 @@ def trigger_poll():
 @app.route("/admin/clear-visits", methods=["POST"])
 @requires_auth
 def clear_visits():
-    """Reset every entry's visit count and rate-limit timestamp to zero/null."""
     db = get_db()
     result = db.execute(
         "UPDATE entries SET visits = 0, last_visit_at = NULL "
@@ -820,11 +652,6 @@ def clear_visits():
     db.commit()
     flash(f"Cleared visits on {result.rowcount} entries.")
     return redirect(url_for("admin"))
-
-
-# ---------------------------------------------------------------------------
-# Submit – add-only admin panel
-# ---------------------------------------------------------------------------
 
 
 @app.route("/submit")
@@ -855,13 +682,8 @@ def robots():
     return app.send_static_file("robots.txt")
 
 
-# ---------------------------------------------------------------------------
-# Startup
-# ---------------------------------------------------------------------------
-
 init_db()
 
-# Start background poller in a daemon thread
 poller_thread = threading.Thread(target=poller_loop, daemon=True)
 poller_thread.start()
 

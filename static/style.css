@@ -1,9 +1,3 @@
-/* ---------------------------------------------------------------------------
-   blogson - shared styles
-   --------------------------------------------------------------------------- */
-
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap");
-
 :root {
     --bg: #0c0c0c;
     --fg: #c8c8c8;
@@ -12,12 +6,18 @@
     --accent: #ff6600;
     --link: #88aaff;
     --link-hover: #bbddff;
+    --link-visited: #551a8b;
     --red: #cc4444;
     --red-hover: #ee5555;
     --border: #222;
     --tag-bg: #1a1a1a;
     --input-bg: #111;
     --btn-bg: #1a1a1a;
+    --font: monospace;
+    --font-big: 1.35rem;
+    --font-normal: 1rem;
+    --font-normalsmall: 0.75rem;
+    --font-small: 0.65rem;
 }
 
 * {
@@ -29,14 +29,17 @@
 body {
     background: var(--bg);
     color: var(--fg);
-    font-family: "IBM Plex Mono", monospace;
+    font-family: var(--font);
     font-size: 14px;
     line-height: 1.6;
     max-width: 900px;
     margin: auto;
 }
 
-/* --- header --- */
+a {
+    color: var(--link);
+    text-decoration: none;
+}
 
 header {
     border-bottom: 1px solid var(--border);
@@ -46,19 +49,17 @@ header {
 }
 
 header h1 {
-    font-family: "Space Mono", monospace;
-    font-size: 1.1rem;
+    font-size: var(--font-big);
     color: var(--accent);
     letter-spacing: 0.05em;
 }
 
 header .subtitle {
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: var(--font-small);
     margin-left: 0.5rem;
 }
 
-/* Index uses a flex header with a right-hand group */
 header.with-top {
     display: flex;
     flex-direction: column;
@@ -80,28 +81,21 @@ header .top {
 }
 
 header .meta {
-    font-size: 0.75rem;
+    font-size: var(--font-small);
     color: var(--fg-dim);
 }
 
 header .brand-link {
-    font-family: "Space Mono", monospace;
-    font-size: 1.1rem;
+    font-size: var(--font-big);
     color: var(--accent);
     letter-spacing: 0.05em;
     text-decoration: none;
 }
 
-header .brand-link:hover {
-    opacity: 0.8;
-}
-
-/* --- footer --- */
-
 footer {
     padding: 0.5rem 1rem 0 1rem;
     border-top: 1px solid var(--border);
-    font-size: 0.7rem;
+    font-size: var(--font-small);
     color: var(--fg-dim);
 }
 
@@ -114,29 +108,24 @@ footer a {
     margin-top: 0.4rem;
     color: var(--fg-dim);
     opacity: 0.6;
-    font-size: 0.65rem;
+    font-size: var(--font-small);
 }
-
-/* --- flash messages --- */
 
 .flash {
     background: var(--input-bg);
     border-left: 3px solid var(--accent);
     padding: 0.5rem 1rem;
     margin-bottom: 1.5rem;
-    font-size: 0.85rem;
+    font-size: var(--font-small);
 }
 
-/* --- random button (index) --- */
-
 .header-btn {
-    font-size: 0.75rem;
+    font-size: var(--font-normalsmall);
     color: var(--fg-dim);
     text-decoration: none;
-    border: 1px dashed var(--border);
+    border: 1px solid var(--border);
     padding: 0.2rem 0.6rem;
     border-radius: 3px;
-    transition: all 0.2s;
     white-space: nowrap;
     margin-left: 0.5rem;
 }
@@ -147,8 +136,6 @@ footer a {
     border-style: solid;
 }
 
-/* --- filter bar (index) --- */
-
 .filter-bar {
     margin-bottom: 1rem;
     display: flex;
@@ -157,13 +144,12 @@ footer a {
 }
 
 .filter-bar a {
-    font-size: 0.7rem;
+    font-size: var(--font-normalsmall);
     color: var(--fg-dim);
     text-decoration: none;
-    padding: 0.15rem 0.5rem;
+    padding: 0.1rem 0.5rem;
     border: 1px solid var(--border);
     border-radius: 2px;
-    transition: all 0.15s;
 }
 
 .filter-bar a:hover,
@@ -173,8 +159,7 @@ footer a {
 }
 
 .feed-select {
-    font-family: inherit;
-    font-size: 0.7rem;
+    font-size: var(--font-normalsmall);
     color: var(--fg-dim);
     background: var(--bg);
     border: 1px solid var(--border);
@@ -197,14 +182,11 @@ footer a {
     color: var(--fg);
 }
 
-/* --- entries (index) --- */
-
 .entry {
     padding: 0.5rem;
     border-bottom: 1px solid var(--border);
     border-left: 3px solid transparent;
     align-items: baseline;
-    transition: border-color 0.3s;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -214,10 +196,6 @@ footer a {
 .entry:hover,
 .entry.focused {
     background: var(--tag-bg);
-    margin: 0 -0.5rem;
-    padding: 0.5rem;
-    padding-left: 0.75rem;
-    border-radius: 2px;
 }
 
 .entry.focused {
@@ -228,6 +206,11 @@ footer a {
     color: var(--link);
     text-decoration: none;
     word-break: break-word;
+    font-size: var(--font-normal);
+}
+
+.entry a:visited {
+    color: var(--link-visited);
 }
 
 .entry a:hover {
@@ -236,7 +219,7 @@ footer a {
 }
 
 .entry .feed-tag {
-    font-size: 0.7rem;
+    font-size: var(--font-small);
     color: var(--fg-dim);
     background: var(--tag-bg);
     padding: 0.15rem 0.4rem;
@@ -245,13 +228,12 @@ footer a {
     border: 1px solid var(--border);
     cursor: default;
     position: relative;
-    transition: color 0.3s;
     width: fit-content;
 }
 
 .entry .date,
 .entry .visits {
-    font-size: 0.7rem;
+    font-size: var(--font-small);
     color: var(--fg-dim);
     white-space: nowrap;
 }
@@ -261,7 +243,7 @@ footer a {
 }
 
 .eye {
-    font-size: 0.85em;
+    font-size: var(--font-small);
 }
 
 .entry-info {
@@ -292,7 +274,7 @@ footer a {
 }
 
 .tag {
-    font-size: 0.65rem;
+    font-size: var(--font-small);
     color: var(--fg-dim);
     background: var(--tag-bg);
     padding: 0.05rem 0.35rem;
@@ -306,7 +288,7 @@ footer a {
 }
 
 .author {
-    font-size: 0.7rem;
+    font-size: var(--font-small);
     color: var(--fg-dim);
     font-style: italic;
     white-space: nowrap;
@@ -326,48 +308,20 @@ footer a {
 .favicon {
     width: 14px;
     height: 14px;
-    flex-shrink: 0;
+    min-width: 14px;
+    max-width: 14px;
     position: relative;
     top: 2px;
     opacity: 0.7;
 }
 
-.tooltip {
-    display: none;
-    position: absolute;
-    bottom: calc(100% + 8px);
-    right: 0;
-    background: var(--tag-bg);
-    border: 1px solid var(--border);
-    color: var(--fg);
-    padding: 0.5rem 0.7rem;
-    border-radius: 3px;
-    font-size: 0.7rem;
-    white-space: normal;
-    width: max-content;
-    max-width: 300px;
-    line-height: 1.4;
-    z-index: 10;
-    pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.feed-tag:hover .tooltip {
-    display: block;
-}
-
-/* --- section headings (admin/submit) --- */
-
 h2 {
-    font-family: "Space Mono", monospace;
-    font-size: 0.85rem;
+    font-size: var(--font-small);
     color: var(--fg-dim);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 1rem;
 }
-
-/* --- add form (admin/submit) --- */
 
 .add-form {
     display: flex;
@@ -381,8 +335,7 @@ h2 {
     border: 1px solid var(--border);
     color: var(--fg-bright);
     padding: 0.5rem 0.75rem;
-    font-family: inherit;
-    font-size: 0.85rem;
+    font-size: var(--font-small);
     border-radius: 2px;
     outline: none;
 }
@@ -400,7 +353,7 @@ h2 {
     align-items: center;
     gap: 0.4rem;
     color: var(--fg-dim);
-    font-size: 0.8rem;
+    font-size: var(--font-small);
     white-space: nowrap;
     cursor: pointer;
 }
@@ -410,18 +363,14 @@ h2 {
     cursor: pointer;
 }
 
-/* --- buttons --- */
-
 .btn {
     background: var(--btn-bg);
     color: var(--fg);
     border: 1px solid var(--border);
     padding: 0.5rem 1rem;
-    font-family: inherit;
-    font-size: 0.8rem;
+    font-size: var(--font-small);
     cursor: pointer;
     border-radius: 2px;
-    transition: all 0.15s;
 }
 
 .btn:hover {
@@ -441,8 +390,6 @@ h2 {
 .actions-bar {
     margin-bottom: 2rem;
 }
-
-/* --- feed list (admin/submit) --- */
 
 .feed-list {
     list-style: none;
@@ -471,18 +418,18 @@ h2 {
 
 .feed-title {
     color: var(--fg-bright);
-    font-size: 0.9rem;
+    font-size: var(--font-normal);
 }
 
 .feed-url {
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: var(--font-small);
     word-break: break-all;
 }
 
 .feed-count {
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: var(--font-small);
     white-space: nowrap;
 }
 
@@ -492,16 +439,12 @@ h2 {
     align-items: center;
 }
 
-/* --- empty state --- */
-
 .empty {
     color: var(--fg-dim);
     padding: 2rem 0;
     font-style: italic;
     text-align: center;
 }
-
-/* --- mobile --- */
 
 @media (max-width: 600px) {
     body {
