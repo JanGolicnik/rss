@@ -1,24 +1,19 @@
 {% extends "base.html" %}
 
-{% block header %}
-<header class="with-top">
-    <div class="top">
-        <h1><a href="/" class="brand-link">blogson</a></h1>
-        <div class="right">
-          <a href="/random" class="header-btn" target="_blank" rel="noopener">~ take me somewhere ~</a>
-          <a href="/submit" class="header-btn" >submit</a>
-        </div>
-    </div>
-    <span class="meta">{{ feeds|length }} feeds, {{ entries|length }} links</span>
-</header>
+{% block header_links %}
+    <a href="/random" class="btn" target="_blank" rel="noopener">random</a>
+    <a href="/submit" class="btn" >submit</a>
 {% endblock %}
 
-{% block content %}
-<div class="filter-bar">
-  <a href="#" {% if time_range == 'week' %}class="active"{% endif %} onclick="filterTime('week')">week</a>
-  <a href="#" {% if time_range == 'month' %}class="active"{% endif %} onclick="filterTime('month')">month</a>
-  <a href="#" {% if time_range == 'all' %}class="active"{% endif %} onclick="filterTime('all')">all</a>
-  <a href="#" {% if sites_only %} class="active" {% endif %} onclick="filterSites()">sites</a>
+{% block header_extra %}
+    {{ feeds|length }} feeds, {{ entries|length }} links 
+{% endblock %}
+
+{% block aside %}
+  <a href="#" {% if time_range == 'week' %}class="active btn"{% else %} class="btn" {% endif %} onclick="filterTime('week')">week</a>
+  <a href="#" {% if time_range == 'month' %}class="active btn"{% else %} class="btn" {% endif %} onclick="filterTime('month')">month</a>
+  <a href="#" {% if time_range == 'all' %}class="active btn"{% else %} class="btn" {% endif %} onclick="filterTime('all')">all</a>
+  <a href="#" {% if sites_only %} class="active btn" {% else %} class="btn" {% endif %} onclick="filterSites()">sites</a>
   {% if feeds %}
   <select class="feed-select" onchange="filterFeed(this.value)">
     <option value="">all feeds</option>
@@ -27,26 +22,25 @@
     {% endfor %}
   </select>
   {% endif %}
-</div>
+{% endblock %}
 
+{% block content %}
 {% if entries %}
-  {% for entry in entries %}
-  <div class="entry" data-feed="{{ entry.feed_title or entry.feed_url }}" data-domain="{{ entry.url.split('/')[2] }}">
+    {% for entry in entries %}
+    <article class="entry needs-favicon" data-feed="{{ entry.feed_title or entry.feed_url }}" data-domain="{{ entry.url.split('/')[2] }}">
     <div class="entry-main">
-      <div class="entry-info">
-        <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="favicon" loading="lazy">
-        <a href="{{ entry.url }}" data-go="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
-      </div>
-      {% if entry.tags and not entry.is_bookmark %}
-      {% set tag_list = entry.tags.split(', ') %}
-      <div class="entry-tags">
+    <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="favicon" loading="lazy">
+    <a href="{{ entry.url }}" data-go="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
+        {% if entry.tags and not entry.is_bookmark %}
+        {% set tag_list = entry.tags.split(', ') %}
+        <div class="entry-tags">
         {% for tag in tag_list[:4] %}<span class="tag">{{ tag }}</span>{% endfor %}
         {% if tag_list|length > 4 %}<span class="tag tag-more">+{{ tag_list|length - 4 }}</span>{% endif %}
-      </div>
-      {% endif %}
-      {% if entry.date %}
-      <span class="date">{{ entry.date[:10] }}</span>
-      {% endif %}
+        </div>
+        {% endif %}
+        {% if entry.date %}
+        <span class="date">{{ entry.date[:10] }}</span>
+        {% endif %}
     </div>
     <div class="entry-info">
         <span class="feed-tag">
@@ -59,15 +53,11 @@
         <span class="author">by {{ entry.author }}</span>
         {% endif %}
     </div>
-  </div>
-  {% endfor %}
+    </article>
+    {% endfor %}
 {% else %}
-  <div class="empty">no links yet. add some feeds.</div>
+    <div class="empty">no links yet. add some feeds.</div>
 {% endif %}
-{% endblock %}
-
-{% block footer_extra %}
-<div class="shortcuts">j/k to navigate · enter to open · g/G to jump top/bottom · esc to unfocus</div>
 {% endblock %}
 
 {% block scripts %}

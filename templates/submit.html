@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}blogson · submit{% endblock %}
+{% block title %}blogson / submit{% endblock %}
 
-{% block header_subtitle %}<span class="subtitle">/ submit</span>{% endblock %}
+{% block header_extra %}
+    {{ feeds|length }} feeds
+{% endblock %}
 
-{% block content %}
-<h2>Submit a feed</h2>
-<div class="add-form">
+{% block aside %}
   <form action="{{ url_for('submit_add_feed') }}" method="post" style="display:contents;">
     <input type="text" name="url" placeholder="https://example.com (or a feed URL)" required>
     <label class="checkbox-label">
@@ -14,10 +14,9 @@
     </label>
     <button type="submit" class="btn">add</button>
   </form>
-</div>
+{% endblock %}
 
-<h2>Existing feeds ({{ feeds|length }})</h2>
-
+{% block content %}
 {% if feeds %}
 <ul class="feed-list">
   {% for feed in feeds %}

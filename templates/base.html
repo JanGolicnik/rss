@@ -10,27 +10,37 @@
 </head>
 <body>
 
-{% block header %}
 <header>
-  <a href="/" class="brand-link">blogson</a>{% block header_subtitle %}{% endblock %}
+    {% block header %}
+        <a href="/"><h1>blogson</h1></a>
+        <p class="meta">{% block header_extra %}{% endblock %}</p>
+        <div class="right">
+            {% block header_links %}{% endblock %}
+        </div>
+    {% endblock %}
 </header>
-{% endblock %}
 
 {% with messages = get_flashed_messages() %}
-  {% for msg in messages %}
-    <div class="flash">{{ msg }}</div>
-  {% endfor %}
+    {% for msg in messages %}
+        <div class="flash">{{ msg }}</div>
+    {% endfor %}
 {% endwith %}
 
-{% block content %}{% endblock %}
+<aside>
+    {% block aside %}{% endblock %}
+</aside>
 
-{% block footer %}
+<main>
+    {% block content %}{% endblock %}
+</main>
+
 <footer>
-  <a href="/admin">admin</a>
-  <a href="https://github.com/JanGolicnik">my github</a>
-  {% block footer_extra %}{% endblock %}
+    {% block footer %}
+        <a href="/admin">admin</a>
+        <a href="https://github.com/JanGolicnik">my github</a>
+        {% block footer_extra %}{% endblock %}
+    {% endblock %}
 </footer>
-{% endblock %}
 
 {% block scripts %}{% endblock %}
 
