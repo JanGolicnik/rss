@@ -266,27 +266,29 @@ def index():
         FROM entries e
         JOIN feeds f ON e.feed_id = f.id
         {"WHERE " + " AND ".join(entry_where) if entry_where else ""}
-
-        UNION ALL
-
-        SELECT
-            NULL AS id,
-            f.url,
-            'New feed: ' || COALESCE(f.title, f.url),
-            f.added_at,
-            NULL,
-            NULL,
-            NULL,
-            f.title,
-            f.url,
-            f.description,
-            f.is_bookmark,
-            1 AS is_new_feed
-        FROM feeds f
-        {"WHERE " + " AND ".join(feed_where) if feed_where else ""}
-
-        ORDER BY date DESC
     """
+    if not sites_only:
+        sql += f"""
+            UNION ALL
+
+            SELECT
+                NULL AS id,
+                f.url,
+                'New feed: ' || COALESCE(f.title, f.url),
+                f.added_at,
+                NULL,
+                NULL,
+                NULL,
+                f.title,
+                f.url,
+                f.description,
+                f.is_bookmark,
+                1 AS is_new_feed
+            FROM feeds f
+            {"WHERE " + " AND ".join(feed_where) if feed_where else ""}
+
+            ORDER BY date DESC
+        """
 
     entries = db.execute(sql).fetchall()
     entries = [
