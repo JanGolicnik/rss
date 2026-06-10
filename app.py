@@ -235,31 +235,66 @@ def index():
     range_filter = request.args.get("range", "week")
     sites_only = request.args.get("sites_only", "0") == "1"
 
-    conditions = []
-    limit = "LIMIT 300"
+    entry_where = []
+    feed_where = ["f.is_bookmark != 1"]
+
     if range_filter == "week":
-        conditions.append("e.date >= datetime('now', '-7 days')")
+        entry_where.append("e.date >= datetime('now', '-7 days')")
+        feed_where.append("f.added_at >= datetime('now', '-7 days')")
     elif range_filter == "month":
-        conditions.append("e.date >= datetime('now', '-30 days')")
-    elif range_filter == "all":
-        limit = ""
+        entry_where.append("e.date >= datetime('now', '-30 days')")
+        feed_where.append("f.added_at >= datetime('now', '-30 days')")
 
     if sites_only:
-        conditions.append("is_bookmark = 1")
+        entry_where.append("f.is_bookmark = 1")
+        feed_where.append("")
 
     sql = f"""
-                SELECT e.id, e.url, e.title, e.date, e.visits,
-                       e.author, e.tags,
-                       f.title AS feed_title, f.url AS feed_url,
-                       f.description AS feed_desc, f.is_bookmark AS is_bookmark
-                FROM entries e
-                JOIN feeds f ON e.feed_id = f.id
-                {"WHERE " + " AND ".join(conditions) if len(conditions) > 0 else ""}
-                ORDER BY e.date DESC
-                {limit}
-            """
+        SELECT
+            e.id,
+            e.url,
+            e.title,
+            e.date,
+            e.visits,
+            e.author,
+            e.tags,
+            f.title AS feed_title,
+            f.url AS feed_url,
+            f.description AS feed_desc,
+            f.is_bookmark AS is_bookmark,
+            0 AS is_new_feed
+        FROM entries e
+        JOIN feeds f ON e.feed_id = f.id
+        {"WHERE " + " AND ".join(entry_where) if entry_where else ""}
+
+        UNION ALL
+
+        SELECT
+            NULL AS id,
+            f.url,
+            'New feed: ' || COALESCE(f.title, f.url),
+            f.added_at,
+            NULL,
+            NULL,
+            NULL,
+            f.title,
+            f.url,
+            f.description,
+            f.is_bookmark,
+            1 AS is_new_feed
+        FROM feeds f
+        {"WHERE " + " AND ".join(feed_where) if feed_where else ""}
+
+        ORDER BY date DESC
+    """
 
     entries = db.execute(sql).fetchall()
+    entries = [
+        row
+        if not row["is_new_feed"]
+        else (dict(row) | {"url": f"https://{urlparse(row['url']).netloc}"})
+        for row in entries
+    ]
 
     feeds = db.execute("SELECT * FROM feeds ORDER BY title, url").fetchall()
     return render_template(
