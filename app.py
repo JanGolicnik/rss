@@ -111,8 +111,8 @@ def init_db():
 
     migrate("CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC)")
 
-    migrate("ALTER TABLE entries ADD COLUMN hn_link TEXT")
-    migrate("ALTER TABLE entries ADD COLUMN lobste_link TEXT")
+    migrate("ALTER TABLE entries ADD COLUMN hn_url TEXT")
+    migrate("ALTER TABLE entries ADD COLUMN lobste_url TEXT")
 
     db.commit()
     db.close()
@@ -175,7 +175,7 @@ def find_url_on_lobste(url):
     data = (
         _get_json(
             f"https://lobste.rs/stories/url/all.json?{q}",
-            headers={"User-Agent": "url-check/1.0 (you@example.com)"},
+            headers={"User-Agent": "url-check/1.0 (jan@nejka.net)"},
         )
         or []
     )
@@ -250,30 +250,29 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection):
 
     db.commit()
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
     rows = db.execute(
-        "SELECT id, url, hn_link, lobste_link FROM entries "
-        "WHERE feed_id = ? AND (hn_link IS NULL OR lobste_link IS NULL) AND date < ? "
+        "SELECT id, url, hn_url, lobste_url FROM entries "
+        "WHERE feed_id = ? AND (hn_url IS NULL OR lobste_url IS NULL) AND date > ? "
         "ORDER BY date DESC LIMIT ?",
         (feed_id, cutoff, 25),
     ).fetchall()
 
-    for entry_id, url, hn_link, lobste_link in rows:
-        if not hn_link:
-            hn_link = find_url_on_hn(url)
+    for entry_id, url, hn_url, lobste_url in rows:
+        if not hn_url:
+            hn_url = find_url_on_hn(url)
             db.execute(
-                "UPDATE entries SET other_sites = ? WHERE id = ?",
-                (hn_link, entry_id),
+                "UPDATE entries SET hn_url = ? WHERE id = ?",
+                (hn_url, entry_id),
             )
-        if not lobste_link:
-            lobste_link = find_url_on_lobste(url)
+        if not lobste_url:
+            lobste_url = find_url_on_lobste(url)
             db.execute(
-                "UPDATE entries SET other_sites = ? WHERE id = ?",
-                (lobste_link, entry_id),
+                "UPDATE entries SET lobste_url = ? WHERE id = ?",
+                (lobste_url, entry_id),
             )
         time.sleep(1)
-
-    db.commit()
+        db.commit()
 
 
 def poll_all():
@@ -339,7 +338,8 @@ def index():
             e.visits,
             e.author,
             e.tags,
-            e.other_sites,
+            e.hn_url,
+            e.lobste_url,
             f.title AS feed_title,
             f.url AS feed_url,
             f.description AS feed_desc,
@@ -358,6 +358,7 @@ def index():
                 f.url,
                 'New feed: ' || COALESCE(f.title, f.url),
                 f.added_at,
+                NULL,
                 NULL,
                 NULL,
                 NULL,
@@ -441,7 +442,7 @@ TRANSPARENT_PIXEL = (
 def fetch_favicon(domain: str):
     try:
         url = f"https://www.google.com/s2/favicons?sz=32&domain={domain}"
-        req = urllib.request.Request(url, headers={"User-Agent": "rss-aggregator/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "blogson/1.0"})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = resp.read()
             mime = resp.headers.get("Content-Type", "image/png")
@@ -450,22 +451,8 @@ def fetch_favicon(domain: str):
         return None, None
 
 
-def cache_feed_favicon(feed_id: int, feed_url: str, db: sqlite3.Connection):
-    domain = urllib.parse.urlparse(feed_url).netloc
-    if not domain:
-        return
-    data, mime = fetch_favicon(domain)
-    if data is None:
-        data = TRANSPARENT_PIXEL
-        mime = "image/png"
-    db.execute(
-        "UPDATE feeds SET favicon_data = ?, favicon_mime = ? WHERE id = ?",
-        (data, mime, feed_id),
-    )
-
-
 @app.route("/favicon/<path:domain>")
-def favicon_proxy(domain):
+def favicon(domain):
     db = get_db()
     row = db.execute(
         "SELECT favicon_data, favicon_mime FROM feeds "
@@ -628,7 +615,6 @@ def _try_add_feed(url: str) -> None:
         ).fetchone()
         if feed:
             poll_feed(feed["id"], feed["url"], db)
-            cache_feed_favicon(feed["id"], feed["url"], db)
             db.commit()
 
         if resolved_url != url:
@@ -675,7 +661,6 @@ def _try_add_bookmark(url: str) -> None:
         db.commit()
         feed = db.execute("SELECT id FROM feeds WHERE url = ?", (final_url,)).fetchone()
         if feed:
-            cache_feed_favicon(feed["id"], final_url, db)
             now = datetime.now(timezone.utc).isoformat()
             db.execute(
                 "INSERT INTO entries (feed_id, url, title, date, tags) "
@@ -696,83 +681,6 @@ def delete_feed(feed_id):
     db.execute("DELETE FROM feeds WHERE id = ?", (feed_id,))
     db.commit()
     flash("Feed removed.")
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/poll", methods=["POST"])
-@requires_auth
-def trigger_poll():
-    db = get_db()
-    feeds = db.execute("SELECT id, url FROM feeds WHERE is_bookmark = 0").fetchall()
-    backfilled = 0
-
-    for feed in feeds:
-        try:
-            parsed = feedparser.parse(feed["url"])
-        except Exception:
-            continue
-
-        for entry in parsed.entries:
-            link = entry.get("link", "")
-            if not link:
-                continue
-
-            author = entry.get("author") or None
-            if author:
-                author = author.strip() or None
-
-            tags = None
-            raw_tags = entry.get("tags", [])
-            if raw_tags:
-                tag_values = []
-                for t in raw_tags:
-                    term = t.get("term") if isinstance(t, dict) else None
-                    if term and term.strip():
-                        tag_values.append(term.strip())
-                if tag_values:
-                    tags = ", ".join(tag_values)
-
-            if not author and not tags:
-                continue
-
-            result = db.execute(
-                "UPDATE entries "
-                "SET author = COALESCE(author, ?), tags = COALESCE(tags, ?) "
-                "WHERE feed_id = ? AND url = ? "
-                "AND (author IS NULL OR tags IS NULL)",
-                (author, tags, feed["id"], link),
-            )
-            backfilled += result.rowcount
-
-    db.commit()
-
-    favicons_cached = 0
-    for feed in feeds:
-        try:
-            cache_feed_favicon(feed["id"], feed["url"], db)
-            favicons_cached += 1
-        except Exception:
-            pass
-    db.commit()
-
-    poll_all()
-    flash(
-        f"Polled all feeds. Backfilled metadata on {backfilled} entries. "
-        f"Refreshed {favicons_cached} favicons."
-    )
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/clear-visits", methods=["POST"])
-@requires_auth
-def clear_visits():
-    db = get_db()
-    result = db.execute(
-        "UPDATE entries SET visits = 0, last_visit_at = NULL "
-        "WHERE visits > 0 OR last_visit_at IS NOT NULL"
-    )
-    db.commit()
-    flash(f"Cleared visits on {result.rowcount} entries.")
     return redirect(url_for("admin"))
 
 
