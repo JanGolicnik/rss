@@ -30,7 +30,10 @@
     <article class="entry needs-favicon" data-feed="{{ entry.feed_title or entry.feed_url }}" data-domain="{{ entry.url.split('/')[2] }}">
     <div class="entry-main">
         <img class="favicon" src="/favicon/{{ entry.url.split('/')[2] }}" alt="favicon" loading="lazy">
-        <a class="entry-title" href="{{ entry.url }}" data-go="/go/{{ entry.id }}" target="_blank" rel="noopener">{{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}</a>
+        <a class="entry-title" href="{{ entry.url }}" data-go="/go/{{ entry.id }}" target="_blank" rel="noopener">
+            {{"Site showcase: " if entry.is_bookmark else ""}}
+            {{ entry.title if entry.title and entry.title.strip() else entry.url.split('/')[2] }}
+        </a>
         {% if entry.tags and not entry.is_bookmark %}
         {% set tag_list = entry.tags.split(', ') %}
         <div class="entry-tags">
