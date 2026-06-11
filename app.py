@@ -1,14 +1,15 @@
+import json
 import os
 import re
 import sqlite3
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
 
 import feedparser
 from flask import Flask, Response, flash, g, redirect, render_template, request, url_for
@@ -100,19 +101,18 @@ def init_db():
     migrate("DROP INDEX IF EXISTS idx_entries_published")
 
     migrate("ALTER TABLE entries ADD COLUMN date TEXT")
-    try:
-        db.execute(
-            "UPDATE entries SET date = COALESCE(published, fetched_at) "
-            "WHERE date IS NULL"
-        )
-    except sqlite3.OperationalError:
-        pass
+    migrate(
+        "UPDATE entries SET date = COALESCE(published, fetched_at) WHERE date IS NULL"
+    )
     migrate("ALTER TABLE entries DROP COLUMN published")
     migrate("ALTER TABLE entries DROP COLUMN fetched_at")
 
     migrate("ALTER TABLE feeds DROP COLUMN color")
 
     migrate("CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC)")
+
+    migrate("ALTER TABLE entries ADD COLUMN hn_link TEXT")
+    migrate("ALTER TABLE entries ADD COLUMN lobste_link TEXT")
 
     db.commit()
     db.close()
@@ -137,7 +137,52 @@ def requires_auth(f):
     return decorated
 
 
-def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
+def _get_json(url: str, headers: dict | None = None):
+    req = urllib.request.Request(url, headers=headers or {})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return json.load(r)
+
+
+def find_url_on_hn(url):
+    def _norm(u: str) -> str:
+        p = urllib.parse.urlsplit(u.strip())
+        host = p.netloc.lower().removeprefix("www.")
+        path = p.path.rstrip("/") or "/"
+        return f"{host}{path}"
+
+    normalized = _norm(url)
+    q = urllib.parse.urlencode(
+        {
+            "query": url,
+            "restrictSearchableAttributes": "url",
+            "tags": "story",
+            "hitsPerPage": 100,
+        }
+    )
+    data = _get_json(f"https://hn.algolia.com/api/v1/search?{q}") or {}
+    return next(
+        (
+            f"https://news.ycombinator.com/item?id={h['objectID']}"
+            for h in data.get("hits", [])
+            if h.get("url") and _norm(h["url"]) == normalized
+        ),
+        None,
+    )
+
+
+def find_url_on_lobste(url):
+    q = urllib.parse.urlencode({"url": url})
+    data = (
+        _get_json(
+            f"https://lobste.rs/stories/url/all.json?{q}",
+            headers={"User-Agent": "url-check/1.0 (you@example.com)"},
+        )
+        or []
+    )
+    return next((s.get("comments_url") or s.get("short_id_url") for s in data), None)
+
+
+def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection):
     try:
         parsed = feedparser.parse(feed_url)
     except Exception as e:
@@ -204,7 +249,31 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection) -> int:
             pass
 
     db.commit()
-    return new
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+    rows = db.execute(
+        "SELECT id, url, hn_link, lobste_link FROM entries "
+        "WHERE feed_id = ? AND (hn_link IS NULL OR lobste_link IS NULL) AND date < ? "
+        "ORDER BY date DESC LIMIT ?",
+        (feed_id, cutoff, 25),
+    ).fetchall()
+
+    for entry_id, url, hn_link, lobste_link in rows:
+        if not hn_link:
+            hn_link = find_url_on_hn(url)
+            db.execute(
+                "UPDATE entries SET other_sites = ? WHERE id = ?",
+                (hn_link, entry_id),
+            )
+        if not lobste_link:
+            lobste_link = find_url_on_lobste(url)
+            db.execute(
+                "UPDATE entries SET other_sites = ? WHERE id = ?",
+                (lobste_link, entry_id),
+            )
+        time.sleep(1)
+
+    db.commit()
 
 
 def poll_all():
@@ -212,12 +281,14 @@ def poll_all():
     db.row_factory = sqlite3.Row
     feeds = db.execute("SELECT id, url FROM feeds WHERE is_bookmark = 0").fetchall()
     total = 0
+    total_upd = 0
     for feed in feeds:
-        n = poll_feed(feed["id"], feed["url"], db)
-        total += n
+        poll_feed(feed["id"], feed["url"], db)
     db.close()
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[poll] {ts} — polled {len(feeds)} feeds, {total} new entries")
+    print(
+        f"[poll] {ts} — polled {len(feeds)} feeds, {total} new entries, {total_upd} updates"
+    )
 
 
 def poller_loop():
@@ -227,6 +298,16 @@ def poller_loop():
         except Exception as e:
             print(f"[poll] unhandled error: {e}")
         time.sleep(POLL_INTERVAL)
+
+
+@app.template_filter("fromjson")
+def fromjson(value):
+    if not value:
+        return {}
+    try:
+        return json.loads(value)
+    except (ValueError, TypeError):
+        return {}
 
 
 @app.route("/")
@@ -258,6 +339,7 @@ def index():
             e.visits,
             e.author,
             e.tags,
+            e.other_sites,
             f.title AS feed_title,
             f.url AS feed_url,
             f.description AS feed_desc,
@@ -279,6 +361,7 @@ def index():
                 NULL,
                 NULL,
                 NULL,
+                NULL,
                 f.title,
                 f.url,
                 f.description,
@@ -294,7 +377,9 @@ def index():
     entries = [
         row
         if not row["is_new_feed"]
-        else (dict(row) | {"url": f"https://{urlparse(row['url']).netloc}"})
+        else (
+            dict(row) | {"url": f"https://{urllib.parse.urlparse(row['url']).netloc}"}
+        )
         for row in entries
     ]
 
@@ -366,7 +451,7 @@ def fetch_favicon(domain: str):
 
 
 def cache_feed_favicon(feed_id: int, feed_url: str, db: sqlite3.Connection):
-    domain = urlparse(feed_url).netloc
+    domain = urllib.parse.urlparse(feed_url).netloc
     if not domain:
         return
     data, mime = fetch_favicon(domain)
@@ -473,12 +558,12 @@ def discover_feed(page_url: str, html_bytes: bytes) -> str | None:
     for pattern in (link_re, simple_re, href_first_re):
         m = pattern.search(html)
         if m:
-            candidate = urljoin(page_url, m.group(1))
+            candidate = urllib.parse.urljoin(page_url, m.group(1))
             content, final_url, err = _fetch_url(candidate)
             if content and _is_valid_feed(feedparser.parse(content)):
                 return final_url
 
-    parsed_url = urlparse(page_url)
+    parsed_url = urllib.parse.urlparse(page_url)
     root = f"{parsed_url.scheme}://{parsed_url.netloc}"
     for path in COMMON_FEED_PATHS:
         candidate = root + path
