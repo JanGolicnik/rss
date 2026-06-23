@@ -6,6 +6,16 @@ document.addEventListener("click", function (e) {
   );
 });
 
+let iframe = document.getElementById("site-preview");
+
+document.addEventListener("mousemove", function (e) {
+  let link = e.target.closest("a[data-go]");
+  if (!link) return;
+  if (iframe.src !== link.href) {
+    iframe.src = link.href;
+  }
+});
+
 function filterFeed(feedName) {
   let params = new URLSearchParams(window.location.search);
   if (feedName) {

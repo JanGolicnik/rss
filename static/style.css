@@ -36,11 +36,22 @@ body {
     font-family: var(--font);
     font-size: 14px;
     line-height: 1.6;
-    max-width: 900px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
     margin: auto;
+    max-width: 800px;
+}
+
+main {
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    width: 100%;
+    max-width: 800px;
 }
 
 a {
@@ -95,6 +106,19 @@ header .subtitle {
 
 header .meta {
     margin-right: auto;
+}
+
+.content {
+    display: flex;
+    flex-direction: row;
+    height: fit-content;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+iframe {
+    display: none;
 }
 
 .meta {
@@ -416,4 +440,19 @@ aside input::placeholder {
     max-width: 1rem;
     padding: 0;
     margin: 0;
+}
+
+@media (min-width: 1500px) {
+    body {
+        max-width: none;
+    }
+    iframe {
+        display: block;
+        height: calc(100vh - 8rem);
+        position: sticky;
+        top: 5rem;
+        width: 100%;
+        margin: 0 1.5rem 1.5rem 1.5rem;
+        border: none;
+    }
 }

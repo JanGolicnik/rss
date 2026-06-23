@@ -1,3 +1,5 @@
 links.db
+links.db-shm
+links.db-wal
 .venv
 .env
