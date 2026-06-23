@@ -41,7 +41,7 @@ app.secret_key = os.environ["SECRET_KEY"]
 
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(DATABASE)
+        g.db = sqlite3.connect(DATABASE, timeout=30)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA journal_mode=WAL")
     return g.db
@@ -258,25 +258,25 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection):
         (feed_id, cutoff, 25),
     ).fetchall()
 
+    updated = []
     for entry_id, url, hn_url, lobste_url in rows:
         if not hn_url:
             hn_url = find_url_on_hn(url)
-            db.execute(
-                "UPDATE entries SET hn_url = ? WHERE id = ?",
-                (hn_url, entry_id),
-            )
         if not lobste_url:
             lobste_url = find_url_on_lobste(url)
-            db.execute(
-                "UPDATE entries SET lobste_url = ? WHERE id = ?",
-                (lobste_url, entry_id),
-            )
+        updated.append((entry_id, hn_url, lobste_url))
         time.sleep(1)
-        db.commit()
+
+    for entry_id, url, hn_url, lobste_url in updated:
+        db.execute(
+            "UPDATE entries SET hn_url = ?, lobste_url = ? WHERE id = ?",
+            (hn_url, lobste_url, entry_id),
+        )
+    db.commit()
 
 
 def poll_all():
-    db = sqlite3.connect(DATABASE)
+    db = sqlite3.connect(DATABASE, timeout=30)
     db.row_factory = sqlite3.Row
     feeds = db.execute("SELECT id, url FROM feeds WHERE is_bookmark = 0").fetchall()
     total = 0
