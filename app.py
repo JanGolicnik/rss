@@ -267,7 +267,7 @@ def poll_feed(feed_id: int, feed_url: str, db: sqlite3.Connection):
         updated.append((entry_id, hn_url, lobste_url))
         time.sleep(1)
 
-    for entry_id, url, hn_url, lobste_url in updated:
+    for entry_id, hn_url, lobste_url in updated:
         db.execute(
             "UPDATE entries SET hn_url = ?, lobste_url = ? WHERE id = ?",
             (hn_url, lobste_url, entry_id),
