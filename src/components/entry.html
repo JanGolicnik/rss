@@ -1,12 +1,12 @@
 <article
     class="entry needs-favicon"
-    data-feed="{{ props.feed_title ?? props.feed_url }}"
+    data-feed="{{ props.feed_title || props.feed_url }}"
     data-domain="{{ props.url.split('/')[2] }}"
 >
     <div class="entry-main">
         <img
             class="favicon"
-            src="/favicon/{{ props.url.split('/')[2] }}"
+            src="/favicon/:{{ props.url.split('/')[2] }}"
             alt="favicon"
             loading="lazy"
         />
@@ -17,9 +17,55 @@
             target="_blank"
             rel="noopener"
         >
-            {{ props.is_bookmark ? "Site showcase: " : "" }} {{ props.title ?
-            props.title : props.url.split('/')[2] }}
+            {{ props.is_bookmark ? "Site showcase: " : "" }} {{ (props.title &&
+            props.title.trim()) ? props.title : props.url.split('/')[2] }}
         </a>
+        <script &&>
+            let out = "";
+            if (props.tags && !props.is_bookmark) {
+                const tag_list = props.tags.split(", ");
+                out += '<div class="entry-tags">';
+                tag_list
+                    .slice(0, 4)
+                    .forEach(
+                        (tag) => (out += `<span class="tag">${tag}</span>`),
+                    );
+                if (tag_list.length > 4)
+                    out += `<span class="tag tag-more">+${tag_list.length - 4}</span>`;
+                out += "</div>";
+            }
+            return out;
+        </script>
+        <script &&>
+            return props.date
+                ? `<span class="date">${props.date.slice(0, 10)}</span>`
+                : "";
+        </script>
     </div>
-    <div class="entry-info"></div>
+    <div class="entry-info">
+        <span class="feed-tag">
+            {{ props.is_bookmark ? "site" : (props.feed_title || props.feed_url
+            || '').slice(0, 20) }}
+        </span>
+        <script &&>
+            return props.visits && props.visits > 0
+                ? `<span class="visits" title="${props.visits} visit${props.visits !== 1 ? "s" : ""}">${props.visits} <span class="eye">👁</span></span>`
+                : "";
+        </script>
+        <script &&>
+            return props.author
+                ? `<span class="author">by ${props.author}</span>`
+                : "";
+        </script>
+        <script &&>
+            return props.hn_url
+                ? `<a href="${props.hn_url}" target="_blank" rel="noopener noreferrer" title="On Hacker News"><img class="favicon" src="https://news.ycombinator.com/favicon.ico" alt="Hacker News"></a>`
+                : "";
+        </script>
+        <script &&>
+            return props.lobste_url
+                ? `<a href="${props.lobste_url}" target="_blank" rel="noopener noreferrer" title="On Lobsters"><img class="favicon" src="https://lobste.rs/favicon.ico" alt="Lobsters"></a>`
+                : "";
+        </script>
+    </div>
 </article>

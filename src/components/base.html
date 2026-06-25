@@ -9,12 +9,12 @@
     </head>
 
     <body>
-        {{{ props.header }}}
+        {{{ props.header ?? "" }}}
 
-        <aside>{{{ props.aside }}}</aside>
+        <aside>{{{ props.aside ?? "" }}}</aside>
 
         <div class="content">
-            <main>{{{ props.body }}}</main>
+            <main>{{{ props.body ?? "" }}}</main>
 
             <iframe id="site-preview" src="about:blank" title="page"></iframe>
         </div>
@@ -25,5 +25,5 @@
         </footer>
     </body>
 
-    {{{ props.scripts ?? "" }}}
+    {{{ props.script ? `<script src=\"${props.script}\"></script>` : "" }}}
 </html>

@@ -1,6 +1,8 @@
 <script &&>
     return c.base({
-        header: c.header({ links: "links", extra: "extra" }),
-        body,
+        header: c.header(),
+        aside: c.index_aside({ ...props.params }),
+        body: c.entries({ entries: props.entries }),
+        script: "public/app.js",
     });
 </script>

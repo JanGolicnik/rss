@@ -45,6 +45,22 @@ function init_db() {
   `);
 }
 
+function session_is_login(session) {
+  return session != null;
+}
+
+function session_is_admin(session) {
+  return session?.role === "admin";
+}
+
+function require_login(req) {
+  if (!session_is_login(req.session)) return app_redirect("/login");
+}
+
+function require_admin(req) {
+  if (!session_is_admin(req.session)) return app_error(403, "");
+}
+
 function route_index(req) {
   const entries = db
     .prepare(
@@ -57,9 +73,7 @@ function route_index(req) {
     `,
     )
     .all();
-  return gss.render("index.html", {
-    body: gss.render_component("entries", { entries }),
-  });
+  return gss.render("index.html", { entries, params: req.params });
 }
 
 function route_login() {
@@ -90,20 +104,21 @@ function route_logout_submit(req) {
   return app_redirect("/");
 }
 
-function session_is_login(session) {
-  return session != null;
-}
-
-function session_is_admin(session) {
-  return session?.role === "admin";
-}
-
-function require_login(req) {
-  if (!session_is_login(req.session)) return app_redirect("/login");
-}
-
-function require_admin(req) {
-  if (!session_is_admin(req.session)) return app_error(403, "");
+function route_favicon(req) {
+  const row = db
+    .prepare(
+      `SELECT favicon_data, favicon_mime FROM feeds WHERE url LIKE ? AND favicon_data IS NOT NULL LIMIT 1`,
+    )
+    .get(`%${req.params.domain}%`);
+  if (row) {
+    return app_ok({
+      data: row.favicon_data,
+      headers: {
+        "Content-Type": row.favicon_mime ?? "image/png",
+        "Cache-Control": "public, max-age=604800",
+      },
+    });
+  }
 }
 
 const app = app_create({
@@ -111,6 +126,7 @@ const app = app_create({
     // "/": { check: [require_login], route: route_index },
     "/": route_index,
     "/login": route_login,
+    "/favicon/:domain": route_favicon,
     "/admin": {
       check: [require_login, require_admin],
       route: route_login,
