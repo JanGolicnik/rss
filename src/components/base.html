@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{{{ props.title ?? "blogson" }}}</title>
+        <link rel="stylesheet" href="/public/style.css" />
+        <link rel="icon" type="image/svg+xml" href="/public/favicon.svg" />
+    </head>
+
+    <body>
+        {{{ props.header }}}
+
+        <aside>{{{ props.aside }}}</aside>
+
+        <div class="content">
+            <main>{{{ props.body }}}</main>
+
+            <iframe id="site-preview" src="about:blank" title="page"></iframe>
+        </div>
+
+        <footer>
+            <a href="/admin">admin</a>
+            <a href="https://github.com/JanGolicnik">my github</a>
+        </footer>
+    </body>
+
+    {{{ props.scripts ?? "" }}}
+</html>

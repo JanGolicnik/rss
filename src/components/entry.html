@@ -1,0 +1,25 @@
+<article
+    class="entry needs-favicon"
+    data-feed="{{ props.feed_title ?? props.feed_url }}"
+    data-domain="{{ props.url.split('/')[2] }}"
+>
+    <div class="entry-main">
+        <img
+            class="favicon"
+            src="/favicon/{{ props.url.split('/')[2] }}"
+            alt="favicon"
+            loading="lazy"
+        />
+        <a
+            class="entry-title"
+            href="{{ props.url }}"
+            data-go="/go/{{ props.id }}"
+            target="_blank"
+            rel="noopener"
+        >
+            {{ props.is_bookmark ? "Site showcase: " : "" }} {{ props.title ?
+            props.title : props.url.split('/')[2] }}
+        </a>
+    </div>
+    <div class="entry-info"></div>
+</article>
