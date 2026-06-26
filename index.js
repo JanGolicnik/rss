@@ -1,10 +1,45 @@
 import fw from "./include/framework/app.js";
-
+import Parser from "rss-parser";
+const parser = new Parser();
 import gss from "./include/gss/gss.js";
 
 import Database from "better-sqlite3";
 
 let db;
+
+const COMMON_FEED_PATHS = [
+  "/feed",
+  "/feed/",
+  "/rss",
+  "/rss/",
+  "/feed.xml",
+  "/rss.xml",
+  "/atom.xml",
+  "/index.xml",
+  "/feeds/posts/default",
+  "/?feed=rss2",
+];
+
+const link_re =
+  /<link\b[^>]*?(?:rel=["']alternate["'][^>]*?type=["']application\/(?:rss|atom)\+xml["']|type=["']application\/(?:rss|atom)\+xml["'][^>]*?rel=["']alternate["'])[^>]*?href=["']([^"']+)["']/gi;
+const simple_re =
+  /<link\b[^>]*?type=["']application\/(?:rss|atom)\+xml["'][^>]*?href=["']([^"']+)["']/gi;
+const href_first_re =
+  /<link\b[^>]*?href=["']([^"']+)["'][^>]*?type=["']application\/(?:rss|atom)\+xml["']/gi;
+
+async function fetch_url(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "blogson/1.0 (jan@nejka.net)" },
+      signal: AbortSignal.timeout(3000),
+      redirect: "follow",
+    });
+    if (!res.ok) return { error: `Server returned ${res.status}` };
+    return { content: await res.arrayBuffer(), resolved: res.url };
+  } catch (e) {
+    return { error: `Fetch failed (${e.message})` };
+  }
+}
 
 function init_db() {
   db = new Database(process.env.DATABASE ?? "links.db");
@@ -40,63 +75,268 @@ function init_db() {
   `);
 }
 
-function session_is_login(session) {
-  return session != null;
-}
-
-function session_is_admin(session) {
-  return session?.role === "admin";
-}
-
-function require_login(req) {
-  if (!session_is_login(req.session)) return app_redirect("/login");
-}
-
-function require_admin(req) {
-  if (!session_is_admin(req.session)) return app_error(403, "");
-}
-
 function route_index(req) {
-  const entries = db
+  const sites_only = req.params.sites_only === "1";
+  const range = req.params.range ?? "week";
+  const days = range === "week" ? -7 : range === "month" ? -30 : null;
+
+  const time_filter = days ? `AND date >= datetime('now', '${days} days')` : "";
+  const bookmark_filter = sites_only ? "AND is_bookmark = 1" : "";
+
+  const union = sites_only
+    ? ""
+    : `
+    UNION ALL
+    SELECT NULL, f.url, 'New feed: ' || COALESCE(f.title, f.url),
+      f.added_at as date, NULL, NULL, NULL, NULL, NULL,
+      f.title, f.url, f.description, f.is_bookmark, 1
+    FROM feeds f
+  `;
+
+  const sql = `
+      SELECT * FROM (
+        SELECT e.id, e.url, e.title, e.date as date, e.visits, e.author, e.tags,
+          e.hn_url, e.lobste_url,
+          f.title AS feed_title, f.url AS feed_url,
+          f.description AS feed_desc, f.is_bookmark, 0
+        FROM entries e
+        JOIN feeds f ON e.feed_id = f.id
+        ${union}
+      )
+      WHERE 1 ${time_filter} ${bookmark_filter}
+      ORDER BY date DESC
+  `;
+
+  return app.render("index.html", {
+    entries: db.prepare(sql).all(),
+    feeds: db.prepare(`SELECT title, url FROM feeds ORDER BY title, url`).all(),
+    range,
+    sites_only,
+  });
+}
+
+function get_all_feeds() {
+  return db
     .prepare(
       `
-    SELECT e.*, f.title AS feed_title, f.url AS feed_url
-    FROM entries e
-    JOIN feeds f ON e.feed_id = f.id
-    WHERE e.date >= datetime('now', '-7 days')
-    ORDER BY e.date DESC
-    `,
+        SELECT f.id as id, f.title as title, f.url as url, COUNT(e.id) AS entry_count
+        FROM feeds f
+        LEFT JOIN entries e ON e.feed_id = f.id
+        GROUP BY f.id
+        ORDER BY f.added_at DESC
+  `,
     )
     .all();
-  return app.render("index.html", { entries, params: req.params });
 }
 
-function route_login() {
-  return fw.ok(`
-    <form method="POST" action="/login">
-      <input type="text" name="username">
-      <input type="password" name="password">
-      <button type="submit">Login</button>
-    </form>
-  `);
+function route_submit(req, msg) {
+  return app.render("submit.html", {
+    feeds: get_all_feeds(),
+    msg,
+  });
 }
 
-function route_login_submit(req) {
-  if (req.body.username === "admin" && req.body.password === "admin") {
-    app.add_session(req, { username: req.body.username, role: "admin" });
-  } else if (
-    req.body.username === "normaln" &&
-    req.body.password === "normaln"
-  ) {
-    app.add_session(req, { username: req.body.username, role: "normaln" });
+function route_admin(req) {
+  return app.render("admin.html", {
+    feeds: get_all_feeds(),
+  });
+}
+
+async function parseFeed(content) {
+  try {
+    return await parser.parseString(Buffer.from(content).toString("utf8"));
+  } catch (e) {
+    return null;
+  }
+}
+
+async function discover_feed(url, content) {
+  const html = Buffer.from(content).toString("utf8");
+  if (await parseFeed(content)) return { resolved: url };
+
+  for (const re of [link_re, simple_re, href_first_re]) {
+    re.lastIndex = 0;
+    const m = re.exec(html);
+    if (!m) continue;
+    const { error, content, resolved } = await fetch_url(
+      new URL(m[1], url).href,
+    );
+    if (error) continue;
+    if (await parseFeed(content)) return { resolved };
   }
 
-  return fw.redirect("/");
+  const root = new URL(url).origin;
+  for (const path of COMMON_FEED_PATHS) {
+    const { error, content, resolved } = await fetch_url(root + path);
+    if (error) continue;
+    if (await parseFeed(content)) return { resolved };
+  }
+
+  return { error: "No feed found" };
 }
 
-function route_logout_submit(req) {
-  app.remove_session(req);
-  return app_redirect("/");
+async function validate_feed(url, skip_parse) {
+  url = url.trim();
+  if (!url) return { error: "Url is required" };
+  if (!url.startsWith("http://") && !url.startsWith("https://"))
+    return { error: "URL must start with http:// or https://" };
+  if (db.prepare("SELECT 1 FROM feeds WHERE url = ?").get(url))
+    return { error: "Already exists" };
+
+  let { error, content, resolved } = await fetch_url(url);
+  if (error) return { error };
+
+  if (db.prepare("SELECT 1 FROM feeds WHERE url = ?").get(resolved))
+    return { error: "Already exists" };
+
+  return skip_parse ? { resolved } : await discover_feed(resolved, content);
+}
+
+function normalize_url(url) {
+  const p = new URL(url.trim());
+  const host = p.hostname.replace(/^www\./, "");
+  const path = p.pathname.replace(/\/+$/, "") || "/";
+  return host + path;
+}
+
+async function find_url_on_hn(url) {
+  const normalized = normalize_url(url);
+  const q = new URLSearchParams({
+    query: url,
+    restrictSearchableAttributes: "url",
+    tags: "story",
+    hitsPerPage: 100,
+  });
+  try {
+    const res = await fetch(`https://hn.algolia.com/api/v1/search?${q}`);
+    const data = await res.json();
+    const hit = (data.hits ?? []).find(
+      (h) => h.url && norm_url(h.url) === normalized,
+    );
+    return hit ? `https://news.ycombinator.com/item?id=${hit.objectID}` : null;
+  } catch {
+    return null;
+  }
+}
+
+async function find_url_on_lobste(url) {
+  const q = new URLSearchParams({ url });
+  try {
+    const res = await fetch(`https://lobste.rs/stories/url/all.json?${q}`, {
+      headers: { "User-Agent": "blogson/1.0 (jan@nejka.net)" },
+    });
+    const data = await res.json();
+    return data[0]?.comments_url ?? data[0]?.short_id_url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function poll_feed(id, url) {
+  const { error, content, resolved } = await fetch_url(url);
+  if (error) return { error };
+  url = resolved;
+  const feed = await parseFeed(content);
+  if (!feed) return;
+
+  const updates = {};
+  if (feed.title) updates.title = feed.title;
+  if (feed.description) updates.description = feed.description;
+
+  if (Object.keys(updates).length > 0) {
+    const set = Object.keys(updates)
+      .map((k) => `${k} = ?`)
+      .join(", ");
+    db.prepare(`UPDATE feeds SET ${set} WHERE id = ?`).run(
+      ...Object.values(updates),
+      id,
+    );
+  }
+
+  for (const item of feed.items) {
+    const url = item.link;
+    if (!url) continue;
+    const title = item.title ?? url;
+    const date = item.isoDate
+      ? new Date(item.isoDate).toISOString()
+      : new Date().toISOString();
+    const author = item.author?.trim() || null;
+    const tags =
+      item.categories?.length > 0 ? item.categories.join(", ") : null;
+
+    db.prepare(
+      `
+      INSERT OR IGNORE INTO entries (feed_id, url, title, date, author, tags)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
+    ).run(id, url, title, date, author, tags);
+  }
+
+  const cutoff = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  const rows = db
+    .prepare(
+      `
+    SELECT id, url, hn_url, lobste_url FROM entries
+    WHERE feed_id = ? AND (hn_url IS NULL OR lobste_url IS NULL) AND date > ?
+    ORDER BY date DESC LIMIT 25
+  `,
+    )
+    .all(id, cutoff);
+
+  for (const row of rows) {
+    const hn_url = row.hn_url ?? (await find_url_on_hn(row.url));
+    const lobste_url = row.lobste_url ?? (await find_url_on_lobste(row.url));
+    db.prepare(
+      "UPDATE entries SET hn_url = ?, lobste_url = ? WHERE id = ?",
+    ).run(hn_url, lobste_url, row.id);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  console.log(`finished polling feed ${id}`);
+}
+
+async function poll_all() {
+  const start = Date.now();
+  console.log(`started poll at ${start}`);
+  const feeds = db
+    .prepare("SELECT id, url FROM feeds WHERE is_bookmark = 0")
+    .all();
+  for (let i = 0; i < feeds.length; i += 5) {
+    const batch = feeds.slice(i, i + 5);
+    await Promise.all(batch.map((feed) => poll_feed(feed.id, feed.url)));
+  }
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  console.log(`polled ${feeds.length} feeds in ${elapsed} seconds`);
+}
+
+async function insert_feed(url, bookmark) {
+  db.prepare("INSERT INTO feeds (url, is_bookmark) VALUES (?, ?)").run(
+    url,
+    bookmark ? 1 : 0,
+  );
+
+  const feed_id = db.prepare("SELECT id FROM feeds WHERE url = ?").get(url).id;
+
+  if (bookmark) {
+    db.prepare(
+      "INSERT INTO entries (feed_id, url, title, date, tags) VALUES (?, ?, ?, ?, ?)",
+    ).run(feed_id, url, url, new Date().toISOString(), "site");
+  } else {
+    await poll_feed(feed_id, url);
+  }
+
+  return `Added ${url}`;
+}
+
+async function route_submit_post(req) {
+  const url = req.body.url ?? "";
+  const bookmark = (req.body.no_rss ?? 0) === "on";
+
+  const { error, resolved } = await validate_feed(url, bookmark);
+  if (error) return route_submit(req, error);
+
+  await insert_feed(resolved, bookmark);
+  return fw.redirect("/submit");
 }
 
 function route_favicon(req) {
@@ -116,27 +356,81 @@ function route_favicon(req) {
   }
 }
 
-const app = fw.create_app({
+function require_login(req) {
+  if (req.auth) {
+    if (
+      (req.auth.username ?? "") === "admin" &&
+      (req.auth.password ?? "") === "admin"
+    ) {
+      app.add_session(req, { ...req.auth });
+      return;
+    }
+  }
+
+  if (!req.session)
+    return fw.error({
+      code: 401,
+      headers: { "WWW-Authenticate": 'Basic realm="Admin"' },
+      data: "Prosim logiraj se :D",
+    });
+}
+
+function route_delete_post(req) {
+  const feed_id = req.params.feed_id;
+  if (feed_id) {
+    db.prepare("DELETE FROM entries WHERE feed_id = ?").run(feed_id);
+    db.prepare("DELETE FROM feeds WHERE id = ?").run(feed_id);
+  }
+  return fw.redirect("/admin");
+}
+
+function route_go(req) {
+  const entry_id = req.params.entry_id;
+  if (!entry_id) return fw.redirect("/");
+  const entry = db
+    .prepare(
+      "SELECT url, (julianday('now') - julianday(last_visit_at)) * 86400 as secs FROM entries WHERE id = ?",
+    )
+    .get(entry_id);
+  if (!entry) return redirect("/");
+
+  if ((entry.secs ?? 1000) > 30) {
+    db.prepare(
+      `UPDATE entries SET visits = visits + 1, last_visit_at = datetime('now')
+          WHERE id = ?`,
+    ).run(entry_id);
+  }
+
+  return fw.redirect(entry.url);
+}
+
+function route_random() {
+  const entry = db
+    .prepare("SELECT id FROM entries ORDER BY RANDOM() LIMIT 1")
+    .get();
+  return fw.redirect(`/go`, { entry_id: entry.id });
+}
+
+const app = fw.app_create({
   get: {
-    // "/": { check: [require_login], route: route_index },
     "/": route_index,
-    "/login": route_login,
-    "/favicon": route_favicon,
+    "/submit": route_submit,
     "/admin": {
-      check: [require_login, require_admin],
-      route: route_login,
+      check: [require_login],
+      route: route_admin,
     },
+    "/favicon": route_favicon,
+    "/go": route_go,
+    "/random": route_random,
   },
   post: {
-    "/login": route_login_submit,
-    "/logout": route_logout_submit,
+    "/submit": route_submit_post,
+    "/delete": route_delete_post,
   },
   template_render: gss.render,
 });
 
 init_db();
-
-// gss should default init by itself on first render
-// gss.init();
-
+setInterval(poll_all, 3 * 60 * 60 * 1000);
+await poll_all();
 app.start();

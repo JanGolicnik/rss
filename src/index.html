@@ -1,7 +1,13 @@
 <script &&>
     return c.base({
-        header: c.header(),
-        aside: c.index_aside({ ...props.params }),
+        header: c.header({
+            extra: `${props.feeds.length} feeds ${props.entries.length} entries`,
+            links: `
+              <a href="/random" class="btn" target="_blank" rel="noopener">random</a>
+              <a href="/submit" class="btn" >submit</a>
+            `,
+        }),
+        aside: c.index_aside({ ...props }),
         body: c.entries({ entries: props.entries }),
         script: "public/app.js",
     });

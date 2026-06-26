@@ -1,0 +1,6 @@
+<script &&>
+    return c.base({
+        header: c.header({ extra: `${props.feeds.length} feeds` }),
+        body: c.feeds({ feeds: props.feeds, delete: true }),
+    });
+</script>

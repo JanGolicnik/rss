@@ -7,7 +7,7 @@ export default {
   ok,
   error,
   redirect,
-  create_app,
+  app_create,
 };
 
 function parse_cookies(req) {
@@ -21,6 +21,18 @@ function parse_cookies(req) {
         .map((s) => s.trim()),
     ),
   );
+}
+
+function parse_auth(req) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Basic ")) return null;
+  const [username, password] = Buffer.from(
+    header.slice("Basic ".length),
+    "base64",
+  )
+    .toString()
+    .split(":");
+  return { username, password };
 }
 
 function get_mime(file) {
@@ -53,24 +65,24 @@ export function ok(data) {
   };
 }
 
-export function redirect(url) {
+export function redirect(url, params) {
+  const query = params ? "?" + new URLSearchParams(params).toString() : "";
   return {
     status: "redirect",
-    url,
+    url: url + query,
   };
 }
 
-export function error(code, html) {
+export function error(data) {
   return {
     status: "error",
-    code,
-    html,
+    ...(typeof data == "string" ? { data } : data),
   };
 }
 
 export function app_create(config) {
-  const parse_routes = (routes) => {
-    return Object.fromEntries(
+  const parse_routes = (routes) =>
+    Object.fromEntries(
       Object.entries(routes ?? {}).map(([path, route]) => [
         path,
         typeof route === "function"
@@ -78,7 +90,6 @@ export function app_create(config) {
           : [...(route.check ?? []), route.route],
       ]),
     );
-  };
 
   const routes = {
     GET: {
@@ -87,7 +98,7 @@ export function app_create(config) {
         (req) => {
           const file = req.params.file;
           return fs.existsSync(file)
-            ? app_ok({
+            ? ok({
                 data: fs.readFileSync(file),
                 headers: { "Content-Type": get_mime(file) },
               })
@@ -101,16 +112,15 @@ export function app_create(config) {
   const sessions = new Map();
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost`);
-    const route = (() => {
-      if (method === "GET" && url.pathname.startsWith("/public/")) {
-        req.params.file = path.join(
-          "public",
-          url.pathname.slice("/public/".length),
-        );
-        return routes.GET.public;
-      }
-      return routes[req.method]?.[url.pathname];
-    })();
+    const pathname =
+      url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
+    let route;
+    if (req.method === "GET" && pathname.startsWith("/public/")) {
+      (req.params ??= {}).file = pathname.slice(1);
+      route = routes.GET.public;
+    } else {
+      route = routes[req.method]?.[pathname];
+    }
 
     if (!route) {
       res.writeHead(404);
@@ -118,17 +128,18 @@ export function app_create(config) {
       return;
     }
 
-    req.params = Object.fromEntries(url.searchParams);
+    req.params = { ...req.params, ...Object.fromEntries(url.searchParams) };
     req.body = await parse_body(req);
     req.cookies = parse_cookies(req);
+    req.auth = parse_auth(req);
     req._session_token = req.cookies.session;
     req.session = req.cookies.session
       ? (sessions.get(req._session_token) ?? null)
       : null;
 
-    const result = (() => {
-      for (const fn of route.fns) {
-        const result = fn(req);
+    const result = await (async () => {
+      for (const fn of route) {
+        const result = await Promise.resolve(fn(req));
         if (!result) continue;
         return result;
       }
@@ -139,9 +150,10 @@ export function app_create(config) {
     if (req._new_session_token) {
       res.setHeader(
         "Set-Cookie",
-        `session=${req._new_session_token}; HttpOnly; Path='/'`,
+        `session=${req._new_session_token}; HttpOnly; Path=/`,
       );
     }
+
     if (result.status === "ok") {
       res.writeHead(200, result.headers ?? { "Content-Type": "text/html" });
       res.end(result.data);
@@ -149,13 +161,14 @@ export function app_create(config) {
       res.writeHead(302, { Location: result.url });
       res.end();
     } else if (result.status === "error") {
-      res.writeHead(result.code);
-      res.end(result.html ?? "");
+      res.writeHead(result.code, result.headers ?? {});
+      res.end(result.data ?? "");
     }
   });
 
   return {
     sessions,
+    template_render: config.template_render,
 
     start(port) {
       server.listen(port ?? 8000);
@@ -168,7 +181,7 @@ export function app_create(config) {
       sessions.delete(req._session_token);
     },
     render(file, data) {
-      return app_ok(file, data);
+      return ok(this.template_render(file, data));
     },
   };
 }

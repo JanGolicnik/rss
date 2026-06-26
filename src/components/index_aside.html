@@ -1,4 +1,16 @@
-<a href="#" class={{ props.range === "week" ? `"active_btn"` : `"btn"` }} onclick="filterTime('week')">week</a>
-<a href="#" class={{ props.range === "month" ? `"active_btn"` : `"btn"` }} onclick="filterTime('month')">month</a>
-<a href="#" class={{ props.range === "all" ? `"active_btn"` : `"btn"` }} onclick="filterTime('all')">all</a>
-<a href="#" class={{ props.sites_only ? `"active_btn"` : `"btn"`}} onclick="filterSites()">sites</a>
+<a class={{{ `"btn ${props.range === "week" ? "active" : ""}"` }}}  href="#" onclick="filterTime('week')">week</a>
+<a class={{{ `"btn ${props.range === "month" ? "active" : ""}"` }}} href="#" onclick="filterTime('month')">month</a>
+<a class={{{ `"btn ${props.range === "all" ? "active" : ""}"` }}}   href="#" onclick="filterTime('all')">all</a>
+<a class={{{ `"btn ${props.sites_only ? "active" : ""}"` }}}        href="#" onclick="filterSites()">sites</a>
+
+<select class="feed-select" onchange="filterFeed(this.value)">
+  <option value="">all feeds</option>
+  <script &&>
+  let out = "";
+  for (const feed of props.feeds)
+  {
+    out += `<option value="${ feed.title ?? feed.url }">${ (feed.title ?? feed.url).slice(0, 20) }</option>`
+  }
+  return out;
+  </script>
+</select>
