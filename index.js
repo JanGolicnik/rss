@@ -1,9 +1,4 @@
-import {
-  app_create,
-  app_error,
-  app_ok,
-  app_redirect,
-} from "./include/framework/app.js";
+import fw from "./include/framework/app.js";
 
 import gss from "./include/gss/gss.js";
 
@@ -73,11 +68,11 @@ function route_index(req) {
     `,
     )
     .all();
-  return gss.render("index.html", { entries, params: req.params });
+  return app.render("index.html", { entries, params: req.params });
 }
 
 function route_login() {
-  return app_ok(`
+  return fw.ok(`
     <form method="POST" action="/login">
       <input type="text" name="username">
       <input type="password" name="password">
@@ -96,7 +91,7 @@ function route_login_submit(req) {
     app.add_session(req, { username: req.body.username, role: "normaln" });
   }
 
-  return app_redirect("/");
+  return fw.redirect("/");
 }
 
 function route_logout_submit(req) {
@@ -111,7 +106,7 @@ function route_favicon(req) {
     )
     .get(`%${req.params.domain}%`);
   if (row) {
-    return app_ok({
+    return fw.ok({
       data: row.favicon_data,
       headers: {
         "Content-Type": row.favicon_mime ?? "image/png",
@@ -121,12 +116,12 @@ function route_favicon(req) {
   }
 }
 
-const app = app_create({
+const app = fw.create_app({
   get: {
     // "/": { check: [require_login], route: route_index },
     "/": route_index,
     "/login": route_login,
-    "/favicon/:domain": route_favicon,
+    "/favicon": route_favicon,
     "/admin": {
       check: [require_login, require_admin],
       route: route_login,
@@ -136,10 +131,12 @@ const app = app_create({
     "/login": route_login_submit,
     "/logout": route_logout_submit,
   },
+  template_render: gss.render,
 });
 
 init_db();
 
-gss.init();
+// gss should default init by itself on first render
+// gss.init();
 
 app.start();
