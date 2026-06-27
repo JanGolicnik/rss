@@ -3,20 +3,20 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{{{ props.title ?? "blogson" }}}</title>
+        <title>{{{ p.title ?? "blogson" }}}</title>
         <link rel="stylesheet" href="/public/style.css" />
         <link rel="icon" type="image/svg+xml" href="/public/favicon.svg" />
     </head>
 
     <body>
-        {{{ props.header ?? "" }}}
+        {{{ p.header ?? "" }}}
 
-        <aside>{{{ props.msg ?? "" }}}</aside>
+        <aside>{{{ p.msg ?? "" }}}</aside>
 
-        <aside>{{{ props.aside ?? "" }}}</aside>
+        <aside>{{{ p.aside ?? "" }}}</aside>
 
         <div class="content">
-            <main>{{{ props.body ?? "" }}}</main>
+            <main>{{{ p.body ?? "" }}}</main>
 
             <iframe id="site-preview" src="about:blank" title="page"></iframe>
         </div>
@@ -27,5 +27,5 @@
         </footer>
     </body>
 
-    {{{ props.script ? `<script src=\"${props.script}\"></script>` : "" }}}
+    {{{ p.script ? `<script src=\"${p.script}\"></script>` : "" }}}
 </html>

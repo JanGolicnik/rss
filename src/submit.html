@@ -1,8 +1,8 @@
 <script &&>
     return c.base({
-        header: c.header({ extra: `${props.feeds.length} feeds` }),
-        msg: props.msg,
-        aside: c.submit_aside(props),
-        body: c.feeds({ feeds: props.feeds }),
+        header: c.header({ extra: `${p.feeds.length} feeds` }),
+        msg: p.msg,
+        aside: c.submit_aside(p),
+        body: c.feeds({ feeds: p.feeds }),
     });
 </script>
