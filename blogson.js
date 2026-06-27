@@ -2,7 +2,7 @@ import fw from "./include/framework/app.js";
 import Parser from "rss-parser";
 const parser = new Parser();
 import gss from "./include/gss/gss.js";
-
+import { readFileSync, existsSync } from "node:fs";
 import Database from "better-sqlite3";
 
 let db;
