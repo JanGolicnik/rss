@@ -171,7 +171,9 @@ export function app_create(config) {
     template_render: config.template_render,
 
     start(port) {
-      server.listen(port ?? 8000);
+      port = port ?? 8000;
+      console.log(`started listening on port ${port}`);
+      server.listen(port);
     },
     add_session(req, data) {
       req._new_session_token = crypto.randomBytes(32).toString("hex");
