@@ -3,12 +3,7 @@ import crypto from "node:crypto";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-for (const line of readFileSync(".env", "utf8").split("\n")) {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith("#")) continue;
-  const [key, ...rest] = trimmed.split("=");
-  process.env[key.trim()] ??= rest.join("=").trim();
-}
+Object.assign(process.env, JSON.parse(readFileSync(".env.json", "utf8")));
 
 const SECRET = process.env.WEBHOOK_SECRET ?? "";
 const SERVICE = process.env.WEBHOOK_SERVICE_NAME ?? "blogson";
