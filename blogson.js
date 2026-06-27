@@ -1,4 +1,4 @@
-import fw from "./include/framework/app.js";
+import pici from "./include/picijs/pici.js";
 import Parser from "rss-parser";
 const parser = new Parser();
 import gss from "./include/gss/gss.js";
@@ -110,7 +110,7 @@ function route_index(req) {
       ORDER BY date DESC
   `;
 
-  return app.render("index.html", {
+  return server.render("index.html", {
     entries: db.prepare(sql).all(),
     feeds: db.prepare(`SELECT title, url FROM feeds ORDER BY title, url`).all(),
     range,
@@ -133,14 +133,14 @@ function get_all_feeds() {
 }
 
 function route_submit(req, msg) {
-  return app.render("submit.html", {
+  return server.render("submit.html", {
     feeds: get_all_feeds(),
     msg,
   });
 }
 
 function route_admin(req) {
-  return app.render("admin.html", {
+  return server.render("admin.html", {
     feeds: get_all_feeds(),
   });
 }
@@ -339,7 +339,7 @@ async function route_submit_post(req) {
   if (error) return route_submit(req, error);
 
   await insert_feed(resolved, bookmark);
-  return fw.redirect("/submit");
+  return pici.redirect("/submit");
 }
 
 function route_favicon(req) {
@@ -349,7 +349,7 @@ function route_favicon(req) {
     )
     .get(`%${req.params.domain}%`);
   if (row) {
-    return fw.ok({
+    return pici.ok({
       data: row.favicon_data,
       headers: {
         "Content-Type": row.favicon_mime ?? "image/png",
@@ -359,23 +359,17 @@ function route_favicon(req) {
   }
 }
 
-function require_login(req) {
-  if (req.auth) {
-    if (
-      (req.auth.username ?? "") === "admin" &&
-      (req.auth.password ?? "") === "admin"
-    ) {
-      app.add_session(req, { ...req.auth });
-      return;
-    }
-  }
+function is_admin_auth(auth) {
+  return (auth.username ?? "") === "admin" && (auth.password ?? "") === "admin";
+}
 
-  if (!req.session)
-    return fw.error({
-      code: 401,
-      headers: { "WWW-Authenticate": 'Basic realm="Admin"' },
-      data: "Prosim logiraj se :D",
-    });
+function require_login(req) {
+  if (req.session) return;
+  if (req.auth && is_admin_auth(req.auth)) {
+    server.add_session(req, { ...req.auth });
+    return;
+  }
+  return pici.prompt_login();
 }
 
 function route_delete_post(req) {
@@ -384,12 +378,12 @@ function route_delete_post(req) {
     db.prepare("DELETE FROM entries WHERE feed_id = ?").run(feed_id);
     db.prepare("DELETE FROM feeds WHERE id = ?").run(feed_id);
   }
-  return fw.redirect("/admin");
+  return pici.redirect("/admin");
 }
 
 function route_go(req) {
   const entry_id = req.params.entry_id;
-  if (!entry_id) return fw.redirect("/");
+  if (!entry_id) return pici.redirect("/");
   const entry = db
     .prepare(
       "SELECT url, (julianday('now') - julianday(last_visit_at)) * 86400 as secs FROM entries WHERE id = ?",
@@ -404,17 +398,17 @@ function route_go(req) {
     ).run(entry_id);
   }
 
-  return fw.redirect(entry.url);
+  return pici.redirect(entry.url);
 }
 
 function route_random() {
   const entry = db
     .prepare("SELECT id FROM entries ORDER BY RANDOM() LIMIT 1")
     .get();
-  return fw.redirect(`/go`, { entry_id: entry.id });
+  return pici.redirect(`/go`, { entry_id: entry.id });
 }
 
-const app = fw.app_create({
+const server = pici.create({
   get: {
     "/": route_index,
     "/submit": route_submit,
@@ -430,11 +424,11 @@ const app = fw.app_create({
     "/submit": route_submit_post,
     "/delete": route_delete_post,
   },
-  template_render: gss.render,
+  render: gss.render,
 });
 
 init_db();
 
 setInterval(poll_all, 3 * 60 * 60 * 1000);
 
-app.start(5001);
+server.start(5001);

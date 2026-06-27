@@ -1,6 +1,6 @@
-[submodule "src/template"]
-	path = src/template
-	url = git@github.com:JanGolicnik/gss.git
 [submodule "include/gss"]
 	path = include/gss
 	url = git@github.com:JanGolicnik/gss.git
+[submodule "include/picijs"]
+	path = include/picijs
+	url = git@github.com:JanGolicnik/picijs.git
