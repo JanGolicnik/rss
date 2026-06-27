@@ -27,6 +27,8 @@ const simple_re =
 const href_first_re =
   /<link\b[^>]*?href=["']([^"']+)["'][^>]*?type=["']application\/(?:rss|atom)\+xml["']/gi;
 
+Object.assign(process.env, JSON.parse(readFileSync(".env", "utf8")));
+
 async function fetch_url(url) {
   try {
     const res = await fetch(url, {
