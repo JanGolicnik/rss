@@ -3,3 +3,4 @@ links.db-shm
 links.db-wal
 .venv
 .env.json
+node_modules
