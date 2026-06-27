@@ -45,7 +45,6 @@ async function fetch_url(url) {
 
 function init_db() {
   const path = process.env.DATABASE ?? "links.db";
-  if (existsSync(path)) return;
   db = new Database(path);
   db.pragma("journal_mode = WAL");
 
