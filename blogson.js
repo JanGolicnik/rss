@@ -433,6 +433,7 @@ const app = fw.app_create({
 });
 
 init_db();
+
 setInterval(poll_all, 3 * 60 * 60 * 1000);
-await poll_all();
-app.start();
+
+app.start(5001);
