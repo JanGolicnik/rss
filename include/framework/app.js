@@ -154,6 +154,7 @@ export function app_create(config) {
       );
     }
 
+    console.log(`serving ${url}: ${result.status}`);
     if (result.status === "ok") {
       res.writeHead(200, result.headers ?? { "Content-Type": "text/html" });
       res.end(result.data);
