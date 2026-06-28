@@ -13,17 +13,19 @@
     --tag-bg: #1a1a1a;
     --input-bg: #111;
     --btn-bg: #1a1a1a;
-    --font: monospace;
+    --font: monospace, monospace;
     --font-big: 1.35rem;
     --font-normal: 1rem;
     --font-normalsmall: 0.75rem;
     --font-small: 0.65rem;
+    --main-width: 700px;
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    border: 0;
 }
 
 html {
@@ -40,7 +42,13 @@ body {
     margin: 0;
     padding: 0;
     margin: auto;
-    max-width: 800px;
+    max-width: var(--main-width);
+}
+
+p {
+    padding-left: 1rem;
+    padding-top: 1rem;
+    color: var(--fg-dim);
 }
 
 main {
@@ -51,7 +59,7 @@ main {
     display: flex;
     flex-direction: column;
     width: 100%;
-    max-width: 800px;
+    max-width: var(--main-width);
 }
 
 a {
@@ -60,10 +68,11 @@ a {
 }
 
 header {
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
-    padding: 1rem 0 0.5rem 0;
+    padding-top: 1rem;
+}
+
+header p {
+    padding: 0;
 }
 
 h1 {
@@ -94,8 +103,7 @@ header {
     width: 100%;
     justify-content: center;
     align-items: center;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding: 1rem 0 1rem 1rem;
 }
 
 header .subtitle {
@@ -130,30 +138,17 @@ iframe {
     align-items: center;
 }
 
-.flash {
-    background: var(--input-bg);
-    border-left: 3px solid var(--accent);
-    padding: 0.5rem 1rem;
-    margin-bottom: 1.5rem;
-    font-size: var(--font-small);
-}
-
 aside {
-    margin-bottom: 1rem;
     display: flex;
-    gap: 0.4rem;
     justify-content: center;
     align-items: center;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0.5rem;
 }
 
 .feed-select {
     font-size: var(--font-normalsmall);
     color: var(--fg-dim);
     background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 2px;
     padding: 0.15rem 0.5rem;
     cursor: pointer;
     outline: none;
@@ -175,7 +170,7 @@ aside {
 .entry {
     padding: 0.5rem;
     border-bottom: 1px solid var(--border);
-    border-left: 3px solid transparent;
+    border-left: 3px solid var(--border);
     align-items: baseline;
     display: flex;
     flex-direction: column;
@@ -184,12 +179,8 @@ aside {
 }
 
 .entry:hover,
-.entry.focused {
+.entry.selected {
     background: var(--tag-bg);
-}
-
-.entry.focused {
-    outline: 1px solid var(--border);
 }
 
 .entry-main a {
@@ -223,7 +214,6 @@ aside {
     color: var(--fg-dim);
     background: var(--tag-bg);
     padding: 0.15rem 0.4rem;
-    border-radius: 2px;
     white-space: nowrap;
     border: 1px solid var(--border);
     cursor: default;
@@ -273,7 +263,6 @@ aside {
     color: var(--fg-dim);
     background: var(--tag-bg);
     padding: 0.05rem 0.35rem;
-    border-radius: 2px;
     border: 1px solid var(--border);
     white-space: nowrap;
 }
@@ -326,7 +315,6 @@ aside input {
     color: var(--fg-bright);
     padding: 0.5rem 0.75rem;
     font-size: var(--font-small);
-    border-radius: 2px;
     outline: none;
 }
 
@@ -374,7 +362,6 @@ aside input::placeholder {
     background: var(--input-bg);
     margin: 0 -0.5rem;
     padding: 0.6rem 0.5rem;
-    border-radius: 2px;
 }
 
 .feed-info {
@@ -417,13 +404,16 @@ aside input::placeholder {
     margin: 0;
 }
 
+.btn,
+.feed-select {
+    border-bottom: 1px solid var(--border);
+}
+
 .btn {
     color: var(--fg-dim);
     background: none;
     text-decoration: none;
     padding: 0.2rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 2px;
     font-size: var(--font-normalsmall);
 }
 
@@ -442,17 +432,24 @@ aside input::placeholder {
     border-color: var(--red);
 }
 
-@media (min-width: 1500px) {
+@media (min-width: 1400px) {
     body {
         max-width: none;
+
+        display: grid;
+        grid-template-columns: var(--main-width) 1fr;
+        grid-template-rows: auto auto auto 1fr auto;
     }
     iframe {
+        grid-column: 2;
+        grid-row: 1 / 6;
         display: block;
-        height: calc(100vh - 8rem);
         position: sticky;
-        top: 5rem;
+        top: 1.5rem;
+        height: calc(100vh - 3rem);
         width: 100%;
-        margin: 0 1.5rem 1.5rem 1.5rem;
+        margin: 0 0 1.5rem 0;
+        padding: 0 1.5rem;
         border: none;
     }
 }

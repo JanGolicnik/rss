@@ -1,7 +1,12 @@
 <script &&>
-    return p.entries
-        .map((e) => {
-            return c.entry({ ...e });
-        })
-        .join("");
+    return p.entries.length > 0
+        ? p.entries
+              .map((e) => {
+                  return c.entry({ ...e });
+              })
+              .join("")
+        : `
+        <p>nothing to see yet ~</p>
+        <p>maybe you should <a href="/submit">submit</a> something</p>
+        `;
 </script>

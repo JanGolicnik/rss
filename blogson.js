@@ -432,6 +432,7 @@ const server = pici.create({
   get: {
     "/": route_index,
     "/submit": route_submit,
+    "/about": () => server.render("about.html"),
     "/admin": {
       check: [require_login],
       route: route_admin,
@@ -450,6 +451,6 @@ const server = pici.create({
 init_db();
 
 setInterval(poll_all, 3 * 60 * 60 * 1000);
-poll_all();
+// poll_all();
 
 server.start(5001);

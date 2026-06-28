@@ -1,19 +1,26 @@
+const iframe = document.getElementById("site-preview");
+let selected = null;
+
 document.addEventListener("click", function (e) {
   let link = e.target.closest("a[data-go]");
-  if (!link) return;
-  fetch(link.dataset.go, { method: "GET", keepalive: true }).catch(
-    function () {},
-  );
-});
+  if (link) {
+    fetch(link.dataset.go, { method: "GET", keepalive: true }).catch(
+      function () {},
+    );
+    return;
+  }
 
-let iframe = document.getElementById("site-preview");
-
-document.addEventListener("mousemove", function (e) {
-  let link = e.target.closest("a[data-go]");
-  if (!link) return;
-  if (getComputedStyle(iframe).display === "none") return;
-  if (iframe.src !== link.href) {
-    iframe.src = link.href;
+  const entry = e.target.closest("article");
+  if (entry) {
+    link = entry.querySelector("a[data-go]");
+    if (getComputedStyle(iframe).display === "none") return;
+    if (iframe.src !== link.href) {
+      iframe.src = link.href;
+      if (selected) selected.classList.remove("selected");
+      entry.classList.add("selected");
+      selected = entry;
+    }
+    return;
   }
 });
 

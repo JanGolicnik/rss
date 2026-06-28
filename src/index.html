@@ -1,8 +1,9 @@
 <script &&>
     return c.base({
         header: c.header({
-            extra: `${p.feeds.length} feeds ${p.entries.length} entries`,
+            extra: `${p.entries.length} ${p.sites_only ? "sites to check out" : "posts to read"} `,
             links: `
+              <a href="/about" class="btn">about</a>
               <a href="/random" class="btn" target="_blank" rel="noopener">random</a>
               <a href="/submit" class="btn" >submit</a>
             `,

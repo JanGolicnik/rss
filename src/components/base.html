@@ -9,17 +9,15 @@
     </head>
 
     <body>
-        {{{ p.header ?? "" }}}
+        <header>{{{ p.header ?? "" }}}</header>
 
         <aside>{{{ p.msg ?? "" }}}</aside>
 
         <aside>{{{ p.aside ?? "" }}}</aside>
 
-        <div class="content">
-            <main>{{{ p.body ?? "" }}}</main>
+        <main>{{{ p.body ?? "" }}}</main>
 
-            <iframe id="site-preview" src="about:blank" title="page"></iframe>
-        </div>
+        <iframe id="site-preview" src="about:blank" title="page"></iframe>
 
         <footer>
             <a href="/admin">admin</a>
