@@ -92,7 +92,7 @@ function route_index(req) {
     UNION ALL
     SELECT NULL, f.url, 'New feed: ' || COALESCE(f.title, f.url),
       f.added_at as date, NULL, NULL, NULL, NULL, NULL,
-      f.title, f.url, f.description, f.is_bookmark, 1
+      f.title, f.url, f.description, f.is_bookmark, 1 as is_fake
     FROM feeds f
   `;
 
@@ -101,7 +101,7 @@ function route_index(req) {
         SELECT e.id, e.url, e.title, e.date as date, e.visits, e.author, e.tags,
           e.hn_url, e.lobste_url,
           f.title AS feed_title, f.url AS feed_url,
-          f.description AS feed_desc, f.is_bookmark, 0
+          f.description AS feed_desc, f.is_bookmark, 0 as is_fake
         FROM entries e
         JOIN feeds f ON e.feed_id = f.id
         ${union}

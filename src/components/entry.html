@@ -12,7 +12,7 @@
         />
         <a
             class="entry-title"
-            href="{{ p.url }}"
+            href="{{ p.is_fake ? new URL(p.url).origin : p.url }}"
             data-go="/go/?entry_id={{ p.id }}"
             target="_blank"
             rel="noopener"

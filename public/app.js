@@ -11,7 +11,8 @@ let iframe = document.getElementById("site-preview");
 document.addEventListener("mousemove", function (e) {
   let link = e.target.closest("a[data-go]");
   if (!link) return;
-  if (getComputedStyle(iframe).display !== "none" && iframe.src !== link.href) {
+  if (getComputedStyle(iframe).display === "none") return;
+  if (iframe.src !== link.href) {
     iframe.src = link.href;
   }
 });
