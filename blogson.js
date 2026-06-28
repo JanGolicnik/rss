@@ -235,6 +235,23 @@ async function find_url_on_lobste(url) {
   }
 }
 
+async function fetch_favicon(url) {
+  try {
+    const domain = `https://www.google.com/s2/favicons?sz=32&domain=${url}`;
+    const res = await fetch(domain, {
+      headers: { "User-Agent": "blogson/1.0 (jan@nejka.net)" },
+    });
+    return res.ok
+      ? {
+          favicon_mime: res.headers.get("Content-Type", "image/png"),
+          favicon_data: Buffer.from(await res.arrayBuffer()),
+        }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 async function poll_feed(id, url) {
   const { error, content, resolved } = await fetch_url(url);
   if (error) return { error };
@@ -242,9 +259,12 @@ async function poll_feed(id, url) {
   const feed = await parseFeed(content);
   if (!feed) return;
 
-  const updates = {};
+  let updates = {};
   if (feed.title) updates.title = feed.title;
   if (feed.description) updates.description = feed.description;
+
+  const favicon = await fetch_favicon(url);
+  if (favicon) updates = { ...updates, ...favicon };
 
   if (Object.keys(updates).length > 0) {
     const set = Object.keys(updates)
@@ -430,5 +450,6 @@ const server = pici.create({
 init_db();
 
 setInterval(poll_all, 3 * 60 * 60 * 1000);
+poll_all();
 
 server.start(5001);
