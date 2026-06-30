@@ -2,8 +2,7 @@ import pici from "./include/picijs/pici.js";
 import Parser from "rss-parser";
 const parser = new Parser();
 import gss from "./include/gss/gss.js";
-import { readFileSync, existsSync } from "node:fs";
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 
 let db;
 
@@ -27,8 +26,6 @@ const simple_re =
 const href_first_re =
   /<link\b[^>]*?href=["']([^"']+)["'][^>]*?type=["']application\/(?:rss|atom)\+xml["']/gi;
 
-Object.assign(process.env, JSON.parse(readFileSync(".env.json", "utf8")));
-
 async function fetch_url(url) {
   try {
     const res = await fetch(url, {
@@ -43,10 +40,9 @@ async function fetch_url(url) {
   }
 }
 
-function init_db() {
-  const path = process.env.DATABASE ?? "links.db";
+function init_db(path) {
   db = new Database(path);
-  db.pragma("journal_mode = WAL");
+  db.run("PRAGMA journal_mode = WAL");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS feeds (
@@ -111,8 +107,8 @@ function route_index(req) {
   `;
 
   return server.render("index.html", {
-    entries: db.prepare(sql).all(),
-    feeds: db.prepare(`SELECT title, url FROM feeds ORDER BY title, url`).all(),
+    entries: db.query(sql).all(),
+    feeds: db.query(`SELECT title, url FROM feeds ORDER BY title, url`).all(),
     range,
     sites_only,
   });
@@ -120,7 +116,7 @@ function route_index(req) {
 
 function get_all_feeds() {
   return db
-    .prepare(
+    .query(
       `
         SELECT f.id as id, f.title as title, f.url as url, COUNT(e.id) AS entry_count
         FROM feeds f
@@ -183,13 +179,13 @@ async function validate_feed(url, skip_parse) {
   if (!url) return { error: "Url is required" };
   if (!url.startsWith("http://") && !url.startsWith("https://"))
     return { error: "URL must start with http:// or https://" };
-  if (db.prepare("SELECT 1 FROM feeds WHERE url = ?").get(url))
+  if (db.query("SELECT 1 FROM feeds WHERE url = ?").get(url))
     return { error: "Already exists" };
 
   let { error, content, resolved } = await fetch_url(url);
   if (error) return { error };
 
-  if (db.prepare("SELECT 1 FROM feeds WHERE url = ?").get(resolved))
+  if (db.query("SELECT 1 FROM feeds WHERE url = ?").get(resolved))
     return { error: "Already exists" };
 
   return skip_parse ? { resolved } : await discover_feed(resolved, content);
@@ -270,7 +266,7 @@ async function poll_feed(id, url) {
     const set = Object.keys(updates)
       .map((k) => `${k} = ?`)
       .join(", ");
-    db.prepare(`UPDATE feeds SET ${set} WHERE id = ?`).run(
+    db.query(`UPDATE feeds SET ${set} WHERE id = ?`).run(
       ...Object.values(updates),
       id,
     );
@@ -287,7 +283,7 @@ async function poll_feed(id, url) {
     const tags =
       item.categories?.length > 0 ? item.categories.join(", ") : null;
 
-    db.prepare(
+    db.query(
       `
       INSERT OR IGNORE INTO entries (feed_id, url, title, date, author, tags)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -297,7 +293,7 @@ async function poll_feed(id, url) {
 
   const cutoff = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
   const rows = db
-    .prepare(
+    .query(
       `
     SELECT id, url, hn_url, lobste_url FROM entries
     WHERE feed_id = ? AND (hn_url IS NULL OR lobste_url IS NULL) AND date > ?
@@ -309,9 +305,11 @@ async function poll_feed(id, url) {
   for (const row of rows) {
     const hn_url = row.hn_url ?? (await find_url_on_hn(row.url));
     const lobste_url = row.lobste_url ?? (await find_url_on_lobste(row.url));
-    db.prepare(
-      "UPDATE entries SET hn_url = ?, lobste_url = ? WHERE id = ?",
-    ).run(hn_url, lobste_url, row.id);
+    db.query("UPDATE entries SET hn_url = ?, lobste_url = ? WHERE id = ?").run(
+      hn_url,
+      lobste_url,
+      row.id,
+    );
     await new Promise((r) => setTimeout(r, 1000));
   }
 
@@ -322,7 +320,7 @@ async function poll_all() {
   const start = Date.now();
   console.log(`started poll at ${start}`);
   const feeds = db
-    .prepare("SELECT id, url FROM feeds WHERE is_bookmark = 0")
+    .query("SELECT id, url FROM feeds WHERE is_bookmark = 0")
     .all();
   for (let i = 0; i < feeds.length; i += 5) {
     const batch = feeds.slice(i, i + 5);
@@ -333,15 +331,15 @@ async function poll_all() {
 }
 
 async function insert_feed(url, bookmark) {
-  db.prepare("INSERT INTO feeds (url, is_bookmark) VALUES (?, ?)").run(
+  db.query("INSERT INTO feeds (url, is_bookmark) VALUES (?, ?)").run(
     url,
     bookmark ? 1 : 0,
   );
 
-  const feed_id = db.prepare("SELECT id FROM feeds WHERE url = ?").get(url).id;
+  const feed_id = db.query("SELECT id FROM feeds WHERE url = ?").get(url).id;
 
   if (bookmark) {
-    db.prepare(
+    db.query(
       "INSERT INTO entries (feed_id, url, title, date, tags) VALUES (?, ?, ?, ?, ?)",
     ).run(feed_id, url, url, new Date().toISOString(), "site");
   } else {
@@ -364,7 +362,7 @@ async function route_submit_post(req) {
 
 function route_favicon(req) {
   const row = db
-    .prepare(
+    .query(
       `SELECT favicon_data, favicon_mime FROM feeds WHERE url LIKE ? AND favicon_data IS NOT NULL LIMIT 1`,
     )
     .get(`%${req.params.domain}%`);
@@ -395,8 +393,8 @@ function require_login(req) {
 function route_delete_post(req) {
   const feed_id = req.params.feed_id;
   if (feed_id) {
-    db.prepare("DELETE FROM entries WHERE feed_id = ?").run(feed_id);
-    db.prepare("DELETE FROM feeds WHERE id = ?").run(feed_id);
+    db.query("DELETE FROM entries WHERE feed_id = ?").run(feed_id);
+    db.query("DELETE FROM feeds WHERE id = ?").run(feed_id);
   }
   return pici.redirect("/admin");
 }
@@ -405,14 +403,14 @@ function route_go(req) {
   const entry_id = req.params.entry_id;
   if (!entry_id) return pici.redirect("/");
   const entry = db
-    .prepare(
+    .query(
       "SELECT url, (julianday('now') - julianday(last_visit_at)) * 86400 as secs FROM entries WHERE id = ?",
     )
     .get(entry_id);
   if (!entry) return redirect("/");
 
   if ((entry.secs ?? 1000) > 30) {
-    db.prepare(
+    db.query(
       `UPDATE entries SET visits = visits + 1, last_visit_at = datetime('now')
           WHERE id = ?`,
     ).run(entry_id);
@@ -423,7 +421,7 @@ function route_go(req) {
 
 function route_random() {
   const entry = db
-    .prepare("SELECT id FROM entries ORDER BY RANDOM() LIMIT 1")
+    .query("SELECT id FROM entries ORDER BY RANDOM() LIMIT 1")
     .get();
   return pici.redirect(`/go`, { entry_id: entry.id });
 }
@@ -448,7 +446,7 @@ const server = pici.create({
   render: gss.render,
 });
 
-init_db();
+init_db(process.env.DATABASE ?? "links.db");
 
 setInterval(poll_all, 3 * 60 * 60 * 1000);
 // poll_all();

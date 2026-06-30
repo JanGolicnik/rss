@@ -5,7 +5,7 @@ After=network.target
 [Service]
 User=jan
 WorkingDirectory=/home/jan/rss
-ExecStart=/usr/bin/node deploy.js
+ExecStart=/usr/bin/bun blogson-deploy.js
 Restart=always
 RestartSec=5
 

@@ -2,14 +2,10 @@
   "name": "app",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js --watch-path=src --watch-path=public"
+    "start": "bun run blogson.js",
+    "dev": "bun run --watch blogson.js --watch-path=src --watch-path=public"
   },
   "dependencies": {
-    "better-sqlite3": "^12.11.1",
     "rss-parser": "^3.13.0"
-  },
-  "allowScripts": {
-    "better-sqlite3@12.11.1": true
   }
 }
