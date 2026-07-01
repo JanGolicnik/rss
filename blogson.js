@@ -115,30 +115,37 @@ function route_index(req) {
 }
 
 function get_all_feeds() {
-  return db
-    .query(
-      `
+  return {
+    feeds: db
+      .query(
+        `
         SELECT f.id as id, f.title as title, f.url as url, COUNT(e.id) AS entry_count
         FROM feeds f
         LEFT JOIN entries e ON e.feed_id = f.id
         GROUP BY f.id
         ORDER BY f.added_at DESC
   `,
-    )
-    .all();
+      )
+      .all(),
+    n_feeds: db
+      .query(
+        `
+            SELECT COUNT(id) AS n
+            FROM feeds
+            WHERE is_bookmark = 0
+            ORDER BY added_at DESC
+      `,
+      )
+      .get().n,
+  };
 }
 
 function route_submit(req, msg) {
-  return server.render("submit.html", {
-    feeds: get_all_feeds(),
-    msg,
-  });
+  return server.render("submit.html", { ...get_all_feeds(), msg });
 }
 
 function route_admin(req) {
-  return server.render("admin.html", {
-    feeds: get_all_feeds(),
-  });
+  return server.render("admin.html", { ...get_all_feeds() });
 }
 
 async function parseFeed(content) {

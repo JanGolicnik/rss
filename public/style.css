@@ -39,10 +39,14 @@ body {
     font-size: 14px;
     line-height: 1.6;
     width: 100%;
+    height: 100%;
     margin: 0;
     padding: 0;
     margin: auto;
     max-width: var(--main-width);
+
+    display: grid;
+    grid-template-rows: auto auto auto 1fr auto;
 }
 
 p {
@@ -145,6 +149,10 @@ aside {
     padding-left: 0.5rem;
 }
 
+aside.options {
+    padding-bottom: 1rem;
+}
+
 .feed-select {
     font-size: var(--font-normalsmall);
     color: var(--fg-dim);
@@ -168,13 +176,13 @@ aside {
 }
 
 .entry {
-    padding: 0.5rem;
+    padding: 0.8rem;
+    gap: 0.8rem;
     border-bottom: 1px solid var(--border);
     border-left: 3px solid var(--border);
     align-items: baseline;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
     overflow: hidden;
 }
 
@@ -436,7 +444,6 @@ aside input::placeholder {
     body {
         max-width: none;
 
-        display: grid;
         grid-template-columns: var(--main-width) 1fr;
         grid-template-rows: auto auto auto 1fr auto;
     }
