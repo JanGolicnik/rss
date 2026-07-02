@@ -3,7 +3,7 @@ self.addEventListener("push", (e) => {
   e.waitUntil(
     (async () => {
       try {
-        await self.registration.showNotification("new post !", {
+        await self.registration.showNotification(data.notification_title, {
           body: data.title ?? "uhh",
           icon: data.icon ?? "",
           data: {
