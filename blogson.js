@@ -309,7 +309,7 @@ async function poll_feed(id, url) {
         `
       INSERT OR IGNORE INTO entries (feed_id, url, title, date, author, tags)
       VALUES (?, ?, ?, ?, ?, ?)
-      RETURNING id, url, title
+      RETURNING url, title
     `,
       )
       .get(id, url, title, date, author, tags);
@@ -368,6 +368,7 @@ async function poll_all() {
         sendNotification(
           JSON.stringify({
             ...entry,
+            notification_title: "new feed !",
             icon: `https://blogson.duckdns.org/favicon/?domain=${entry.url.split("/")[2]}`,
           }),
         ),
@@ -391,6 +392,11 @@ async function insert_feed(url, bookmark) {
     db.query(
       "INSERT INTO entries (feed_id, url, title, date, tags) VALUES (?, ?, ?, ?, ?)",
     ).run(feed_id, url, url, new Date().toISOString(), "site");
+    sendNotification({
+      url,
+      title: url,
+      notification_title: "site showcase !",
+    });
   } else {
     await poll_feed(feed_id, url);
   }
