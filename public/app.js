@@ -252,8 +252,6 @@ const PUBLIC_KEY =
   "BIDcPJ2Qc6K0_DqTtXwTjwp5AisVwpIAM2RsesvCbSJmv2eXAkX2b0RmS2an7Z3ot-Wvx1nytihMC2PERp40gRk";
 async function try_subscribe() {
   const permission = await Notification.requestPermission();
-  console.log(permission);
-  alert(permission);
   if (permission !== "granted") return;
 
   const sw = await navigator.serviceWorker.register("/public/sw.js");

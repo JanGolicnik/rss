@@ -478,8 +478,13 @@ function route_random() {
 function route_subscribe_post(req) {
   const sub = req.body;
   db.query(
-    "INSERT INTO subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)",
+    `
+    INSERT INTO subscriptions (endpoint, p256dh, auth)
+     VALUES (?, ?, ?)
+     ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth
+    `,
   ).run(sub.endpoint, sub.keys.p256dh, sub.keys.auth);
+
   return pici.error({ code: 201 });
 }
 
