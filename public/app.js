@@ -6,6 +6,7 @@ document.getElementById("btn_subscribe").addEventListener("click", async () => {
     await try_subscribe();
   } catch (e) {
     console.error(e);
+    alert(e);
   }
 });
 
