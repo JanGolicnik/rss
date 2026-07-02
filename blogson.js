@@ -539,24 +539,4 @@ init_db(process.env.DATABASE ?? "links.db");
 setInterval(poll_all, 3 * 60 * 60 * 1000);
 // poll_all();
 
-let i = 0;
-setInterval(() => {
-  const entry = db
-    .query(
-      `
-    SELECT id, url, title
-    FROM entries
-    LIMIT ${i},1
-  `,
-    )
-    .get();
-  i += 1;
-  sendNotification(
-    JSON.stringify({
-      ...entry,
-      icon: `https://blogson.duckdns.org/favicon/?domain=${entry.url.split("/")[2]}`,
-    }),
-  );
-}, 10);
-
 server.start(5001);
