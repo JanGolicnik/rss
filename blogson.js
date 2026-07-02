@@ -557,6 +557,6 @@ setInterval(() => {
       icon: `https://blogson.duckdns.org/favicon/?domain=${entry.url.split("/")[2]}`,
     }),
   );
-}, 100);
+}, 10);
 
 server.start(5001);
