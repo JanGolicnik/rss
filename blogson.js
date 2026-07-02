@@ -3,6 +3,13 @@ import Parser from "rss-parser";
 const parser = new Parser();
 import gss from "./include/gss/gss.js";
 import { Database } from "bun:sqlite";
+import webpush from "web-push";
+
+webpush.setVapidDetails(
+  "mailto:jan@nejka.net",
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY,
+);
 
 let db;
 
@@ -69,6 +76,12 @@ function init_db(path) {
       lobste_url TEXT,
       FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
       UNIQUE(feed_id, url)
+    );
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      endpoint TEXT PRIMARY KEY,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC);
   `);
@@ -217,7 +230,7 @@ async function find_url_on_hn(url) {
     const res = await fetch(`https://hn.algolia.com/api/v1/search?${q}`);
     const data = await res.json();
     const hit = (data.hits ?? []).find(
-      (h) => h.url && norm_url(h.url) === normalized,
+      (h) => h.url && normalize_url(h.url) === normalized,
     );
     return hit ? `https://news.ycombinator.com/item?id=${hit.objectID}` : null;
   } catch {
@@ -279,6 +292,7 @@ async function poll_feed(id, url) {
     );
   }
 
+  const all_inserted = [];
   for (const item of feed.items) {
     const url = item.link;
     if (!url) continue;
@@ -290,12 +304,16 @@ async function poll_feed(id, url) {
     const tags =
       item.categories?.length > 0 ? item.categories.join(", ") : null;
 
-    db.query(
-      `
+    const inserted = db
+      .query(
+        `
       INSERT OR IGNORE INTO entries (feed_id, url, title, date, author, tags)
       VALUES (?, ?, ?, ?, ?, ?)
+      RETURNING id, url, title
     `,
-    ).run(id, url, title, date, author, tags);
+      )
+      .get(id, url, title, date, author, tags);
+    if (inserted) all_inserted.push(inserted);
   }
 
   const cutoff = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
@@ -321,18 +339,42 @@ async function poll_feed(id, url) {
   }
 
   console.log(`finished polling feed ${id}`);
+
+  return all_inserted;
 }
 
 async function poll_all() {
   const start = Date.now();
-  console.log(`started poll at ${start}`);
+
+  const all_inserted = [];
+
   const feeds = db
     .query("SELECT id, url FROM feeds WHERE is_bookmark = 0")
     .all();
+
   for (let i = 0; i < feeds.length; i += 5) {
     const batch = feeds.slice(i, i + 5);
-    await Promise.all(batch.map((feed) => poll_feed(feed.id, feed.url)));
+    all_inserted.push(
+      ...(await Promise.all(batch.map((feed) => poll_feed(feed.id, feed.url))))
+        .filter(Array.isArray)
+        .flat(),
+    );
   }
+
+  const interval = process.env.POLL_INTERVAL / all_inserted.length;
+  all_inserted.forEach((entry, i) => {
+    setTimeout(
+      () =>
+        sendNotification(
+          JSON.stringify({
+            ...entry,
+            icon: `https://blogson.duckdns.org/favicon/?domain=${entry.url.split("/")[2]}`,
+          }),
+        ),
+      interval * i,
+    );
+  });
+
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
   console.log(`polled ${feeds.length} feeds in ${elapsed} seconds`);
 }
@@ -414,7 +456,7 @@ function route_go(req) {
       "SELECT url, (julianday('now') - julianday(last_visit_at)) * 86400 as secs FROM entries WHERE id = ?",
     )
     .get(entry_id);
-  if (!entry) return redirect("/");
+  if (!entry) return pici.redirect("/");
 
   if ((entry.secs ?? 1000) > 30) {
     db.query(
@@ -433,6 +475,39 @@ function route_random() {
   return pici.redirect(`/go`, { entry_id: entry.id });
 }
 
+function route_subscribe_post(req) {
+  const sub = req.body;
+  db.query(
+    "INSERT INTO subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)",
+  ).run(sub.endpoint, sub.keys.p256dh, sub.keys.auth);
+  return pici.error({ code: 201 });
+}
+
+async function sendNotification(data) {
+  console.log(`sending notification about ${data}`);
+  db.query(`SELECT * FROM subscriptions`)
+    .all()
+    .forEach(async (s) => {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: s.endpoint,
+            keys: { p256dh: s.p256dh, auth: s.auth },
+          },
+          data,
+        );
+      } catch (err) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          db.query("DELETE FROM subscriptions WHERE endpoint = ?").run(
+            s.endpoint,
+          );
+        } else {
+          console.log(err);
+        }
+      }
+    });
+}
+
 const server = pici.create({
   get: {
     "/": route_index,
@@ -449,6 +524,7 @@ const server = pici.create({
   post: {
     "/submit": route_submit_post,
     "/delete": route_delete_post,
+    "/subscribe": route_subscribe_post,
   },
   render: gss.render,
 });
@@ -457,5 +533,25 @@ init_db(process.env.DATABASE ?? "links.db");
 
 setInterval(poll_all, 3 * 60 * 60 * 1000);
 // poll_all();
+
+let i = 0;
+setInterval(() => {
+  const entry = db
+    .query(
+      `
+    SELECT id, url, title
+    FROM entries
+    LIMIT ${i},1
+  `,
+    )
+    .get();
+  i += 1;
+  sendNotification(
+    JSON.stringify({
+      ...entry,
+      icon: `https://blogson.duckdns.org/favicon/?domain=${entry.url.split("/")[2]}`,
+    }),
+  );
+}, 10 * 1000);
 
 server.start(5001);

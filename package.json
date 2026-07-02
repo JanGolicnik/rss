@@ -6,6 +6,7 @@
     "dev": "bun run --watch blogson.js --watch-path=src --watch-path=public"
   },
   "dependencies": {
-    "rss-parser": "^3.13.0"
+    "rss-parser": "^3.13.0",
+    "web-push": "^3.6.7"
   }
 }

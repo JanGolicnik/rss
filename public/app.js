@@ -1,6 +1,14 @@
 const iframe = document.getElementById("site-preview");
 let selected = null;
 
+document.getElementById("btn_subscribe").addEventListener("click", async () => {
+  try {
+    await try_subscribe();
+  } catch (e) {
+    console.error(e);
+  }
+});
+
 document.addEventListener("click", function (e) {
   let link = e.target.closest("a[data-go]");
   if (link) {
@@ -229,6 +237,33 @@ function updateFavicons() {
       .decode()
       .then(() => {})
       .catch((err) => console.log("decode failed:", err.name, err.message));
+  });
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
+}
+
+const PUBLIC_KEY =
+  "BIDcPJ2Qc6K0_DqTtXwTjwp5AisVwpIAM2RsesvCbSJmv2eXAkX2b0RmS2an7Z3ot-Wvx1nytihMC2PERp40gRk";
+async function try_subscribe() {
+  const permission = await Notification.requestPermission();
+  console.log(permission);
+  if (permission !== "granted") return;
+
+  const sw = await navigator.serviceWorker.register("/public/sw.js");
+  const subscription = await sw.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY),
+  });
+
+  await fetch("/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(subscription),
   });
 }
 
