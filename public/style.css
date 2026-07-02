@@ -155,6 +155,7 @@ aside {
     justify-content: center;
     align-items: center;
     padding-left: 0.5rem;
+    gap: 0.5rem;
 }
 
 aside.options {
@@ -390,11 +391,13 @@ aside input::placeholder {
 }
 
 a.btn,
+button.btn,
 .feed-select {
     border-bottom: 1px solid var(--border);
 }
 
-a.btn {
+a.btn,
+button.btn {
     color: var(--fg-dim);
     background: none;
     text-decoration: none;
@@ -402,19 +405,14 @@ a.btn {
     font-size: var(--font-normalsmall);
 }
 
-a.btn:hover,
-a.btn.active {
+.btn:hover,
+.btn.active {
     color: var(--accent);
     border-color: var(--accent);
 }
 
-a.btn-danger {
+.btn-danger {
     color: var(--red);
-}
-
-a.btn-danger:hover {
-    color: var(--red-hover);
-    border-color: var(--red);
 }
 
 @media (min-width: 1400px) {
