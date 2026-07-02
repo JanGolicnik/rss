@@ -71,6 +71,15 @@ a {
     text-decoration: none;
 }
 
+a:visited {
+    color: var(--link);
+}
+
+a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
 header {
     padding-top: 1rem;
 }
@@ -176,14 +185,10 @@ aside.options {
 }
 
 .entry {
-    padding: 0.8rem;
-    gap: 0.8rem;
+    max-width: 100vw;
+    padding: 0.5rem;
     border-bottom: 1px solid var(--border);
     border-left: 3px solid var(--border);
-    align-items: baseline;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
 }
 
 .entry:hover,
@@ -191,19 +196,19 @@ aside.options {
     background: var(--tag-bg);
 }
 
+.entry-main {
+    display: flex;
+    flex-direction: row;
+    padding-bottom: 0.5rem;
+    gap: 0.5rem;
+}
+
 .entry-main a {
-    color: var(--link);
-    text-decoration: none;
+    flex: 1 1 auto;
+    min-width: 0;
     word-break: break-word;
     font-size: var(--font-normal);
-
-    align-items: baseline;
-    gap: 0.6rem;
-    flex-shrink: 1;
-
     margin-right: auto;
-
-    min-width: 3rem;
     max-height: 3rem;
     overflow: hidden;
 }
@@ -212,46 +217,21 @@ aside.options {
     color: var(--link-visited);
 }
 
-.entry a:hover {
-    color: var(--link-hover);
-    text-decoration: underline;
-}
-
 .entry .feed-tag {
-    font-size: var(--font-small);
-    color: var(--fg-dim);
     background: var(--tag-bg);
     padding: 0.15rem 0.4rem;
-    white-space: nowrap;
     border: 1px solid var(--border);
-    cursor: default;
-    position: relative;
-    width: fit-content;
 }
 
 .entry .date,
-.entry .visits {
+.entry .visits,
+.entry .feed-tag,
+.eye,
+.tag,
+.author {
     font-size: var(--font-small);
     color: var(--fg-dim);
     white-space: nowrap;
-}
-
-.entry .visits {
-    opacity: 0.85;
-}
-
-.eye {
-    font-size: var(--font-small);
-}
-
-.entry-info .date {
-    margin-left: auto;
-}
-
-.entry-main {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
 }
 
 .entry-tags {
@@ -262,36 +242,27 @@ aside.options {
     overflow: scroll;
     margin-right: 0.5rem;
     margin-left: 0.5rem;
-    min-width: 3rem;
-    flex-shrink: 99999;
 }
 
 .tag {
-    font-size: var(--font-small);
-    color: var(--fg-dim);
     background: var(--tag-bg);
     padding: 0.05rem 0.35rem;
     border: 1px solid var(--border);
-    white-space: nowrap;
-}
-
-.tag-more {
-    font-style: italic;
 }
 
 .author {
-    font-size: var(--font-small);
-    color: var(--fg-dim);
     font-style: italic;
-    white-space: nowrap;
-    opacity: 0.8;
-    margin-left: auto;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .entry-info {
     display: flex;
     align-items: baseline;
     gap: 0.8rem;
+    min-width: 0;
 }
 
 .favicon {
@@ -300,12 +271,19 @@ aside.options {
     min-width: 1rem;
     max-width: 1rem;
     position: relative;
-    top: 2px;
-    opacity: 0.7;
+    top: 0.3rem;
 }
 
-.entry-title {
-    margin-left: 1rem;
+.entry-tags {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.entry .date,
+.entry .visits,
+.entry .feed-tag {
+    flex-shrink: 0;
 }
 
 h2 {
@@ -412,12 +390,12 @@ aside input::placeholder {
     margin: 0;
 }
 
-.btn,
+a.btn,
 .feed-select {
     border-bottom: 1px solid var(--border);
 }
 
-.btn {
+a.btn {
     color: var(--fg-dim);
     background: none;
     text-decoration: none;
@@ -425,17 +403,17 @@ aside input::placeholder {
     font-size: var(--font-normalsmall);
 }
 
-.btn:hover,
-.btn.active {
+a.btn:hover,
+a.btn.active {
     color: var(--accent);
     border-color: var(--accent);
 }
 
-.btn-danger {
+a.btn-danger {
     color: var(--red);
 }
 
-.btn-danger:hover {
+a.btn-danger:hover {
     color: var(--red-hover);
     border-color: var(--red);
 }

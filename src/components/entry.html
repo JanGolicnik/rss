@@ -48,12 +48,12 @@
             '').slice(0, 20) }}
         </span>
         <script &&>
+            return p.author ? `<span class="author">by ${p.author}</span>` : "";
+        </script>
+        <script &&>
             return p.visits && p.visits > 0
                 ? `<span class="visits" title="${p.visits} visit${p.visits !== 1 ? "s" : ""}">${p.visits} <span class="eye">👁</span></span>`
                 : "";
-        </script>
-        <script &&>
-            return p.author ? `<span class="author">by ${p.author}</span>` : "";
         </script>
         <script &&>
             return p.hn_url
