@@ -253,6 +253,7 @@ const PUBLIC_KEY =
 async function try_subscribe() {
   const permission = await Notification.requestPermission();
   console.log(permission);
+  alert(permission);
   if (permission !== "granted") return;
 
   const sw = await navigator.serviceWorker.register("/public/sw.js");
