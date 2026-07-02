@@ -392,11 +392,13 @@ async function insert_feed(url, bookmark) {
     db.query(
       "INSERT INTO entries (feed_id, url, title, date, tags) VALUES (?, ?, ?, ?, ?)",
     ).run(feed_id, url, url, new Date().toISOString(), "site");
-    sendNotification({
-      url,
-      title: url,
-      notification_title: "site showcase !",
-    });
+    sendNotification(
+      JSON.stringify({
+        url,
+        title: url,
+        notification_title: "site showcase !",
+      }),
+    );
   } else {
     await poll_feed(feed_id, url);
   }
