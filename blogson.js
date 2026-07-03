@@ -369,7 +369,7 @@ async function poll_all() {
           JSON.stringify({
             title: entry.feed,
             body: entry.title,
-            url: `${process.env.URL}/go/?entry_id=${entry.id}`,
+            url: `/go/?entry_id=${entry.id}`,
           }),
         ),
       interval * i * 1000,
@@ -404,7 +404,7 @@ async function insert_feed(url, bookmark) {
       JSON.stringify({
         title: "site showcase !",
         body: url,
-        url: `${process.env.URL}/go/?entry_id=${inserted.id}`,
+        url: `/go/?entry_id=${inserted.id}`,
       }),
     );
   }

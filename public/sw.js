@@ -18,6 +18,5 @@ self.addEventListener("push", (e) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  alert(event.nofitication.data.url);
   event.waitUntil(clients.openWindow(event.notification.data.url));
 });
