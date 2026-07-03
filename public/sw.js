@@ -3,9 +3,8 @@ self.addEventListener("push", (e) => {
   e.waitUntil(
     (async () => {
       try {
-        await self.registration.showNotification(data.notification_title, {
-          body: data.title ?? "uhh",
-          icon: data.icon ?? "",
+        await self.registration.showNotification(data.title, {
+          body: data.body ?? "uhh",
           data: {
             url: data.url ?? "/",
           },

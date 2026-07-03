@@ -309,11 +309,11 @@ async function poll_feed(id, url) {
         `
       INSERT OR IGNORE INTO entries (feed_id, url, title, date, author, tags)
       VALUES (?, ?, ?, ?, ?, ?)
-      RETURNING url, title
+      RETURNING id, title
     `,
       )
       .get(id, url, title, date, author, tags);
-    if (inserted) all_inserted.push(inserted);
+    if (inserted) all_inserted.push({ ...inserted, feed: feed.title });
   }
 
   const cutoff = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
@@ -367,12 +367,12 @@ async function poll_all() {
       () =>
         sendNotification(
           JSON.stringify({
-            ...entry,
-            notification_title: "new feed !",
-            icon: `https://blogson.duckdns.org/favicon/?domain=${entry.url.split("/")[2]}`,
+            title: entry.feed,
+            body: entry.title,
+            url: `${process.env.URL}/go/?entry_id=${entry.id}`,
           }),
         ),
-      interval * i,
+      interval * i * 1000,
     );
   });
 
@@ -388,19 +388,25 @@ async function insert_feed(url, bookmark) {
 
   const feed_id = db.query("SELECT id FROM feeds WHERE url = ?").get(url).id;
 
-  if (bookmark) {
-    db.query(
-      "INSERT INTO entries (feed_id, url, title, date, tags) VALUES (?, ?, ?, ?, ?)",
-    ).run(feed_id, url, url, new Date().toISOString(), "site");
+  if (!bookmark) {
+    await poll_feed(feed_id, url);
+  } else {
+    const q = `
+      INSERT INTO entries (feed_id, url, title, date, tags)
+      VALUES (?, ?, ?, ?, ?)
+      RETURNING id
+      `;
+    const inserted = db
+      .query(q)
+      .get(feed_id, url, url, new Date().toISOString(), "site");
+
     sendNotification(
       JSON.stringify({
-        url,
-        title: url,
-        notification_title: "site showcase !",
+        title: "site showcase !",
+        body: url,
+        url: `${process.env.URL}/go/?entry_id=${inserted.id}`,
       }),
     );
-  } else {
-    await poll_feed(feed_id, url);
   }
 
   return `Added ${url}`;
