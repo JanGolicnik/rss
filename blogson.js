@@ -441,7 +441,10 @@ function route_favicon(req) {
 }
 
 function is_admin_auth(auth) {
-  return (auth.username ?? "") === "admin" && (auth.password ?? "") === "admin";
+  return (
+    (auth.username ?? "") === process.env.ADMIN_USER &&
+    (auth.password ?? "") === process.env.ADMIN_PASS
+  );
 }
 
 function require_login(req) {
