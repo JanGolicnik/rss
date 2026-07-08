@@ -412,15 +412,18 @@ async function insert_feed(url, bookmark) {
   return `Added ${url}`;
 }
 
-async function route_submit_post(req) {
+async function try_submit(req) {
   const url = req.body.url ?? "";
   const bookmark = (req.body.no_rss ?? 0) === "on";
 
   const { error, resolved } = await validate_feed(url, bookmark);
-  if (error) return route_submit(req, error);
+  if (error) return error;
 
-  await insert_feed(resolved, bookmark);
-  return pici.redirect("/submit");
+  return await insert_feed(resolved, bookmark);
+}
+
+async function route_submit_post(req) {
+  return route_submit(req, try_submit(req));
 }
 
 function route_favicon(req) {
@@ -530,6 +533,14 @@ async function sendNotification(data) {
     });
 }
 
+function route_extension(req, msg) {
+  return server.render("extension.html", { ...req.params, msg });
+}
+
+async function route_extension_post(req) {
+  return route_extension(req, await try_submit(req));
+}
+
 const server = pici.create({
   get: {
     "/": route_index,
@@ -542,11 +553,13 @@ const server = pici.create({
     "/favicon": route_favicon,
     "/go": route_go,
     "/random": route_random,
+    "/extension": route_extension,
   },
   post: {
     "/submit": route_submit_post,
     "/delete": route_delete_post,
     "/subscribe": route_subscribe_post,
+    "/extension": route_extension_post,
   },
   render: gss.render,
 });

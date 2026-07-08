@@ -294,7 +294,7 @@ h2 {
     margin-bottom: 1rem;
 }
 
-aside input {
+input {
     flex: 1;
     background: var(--input-bg);
     border: 1px solid var(--border);
@@ -304,11 +304,11 @@ aside input {
     outline: none;
 }
 
-aside input:focus {
+input:focus {
     border-color: var(--accent);
 }
 
-aside input::placeholder {
+input::placeholder {
     color: var(--fg-dim);
 }
 
@@ -413,6 +413,36 @@ button.btn {
 
 .btn-danger {
     color: var(--red);
+}
+
+body#extension {
+    padding: 1rem;
+}
+
+body#extension form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+body#extension input {
+    flex: unset;
+}
+
+body#extension input#url-input {
+    margin-bottom: 1rem;
+}
+
+body#extension label.checkbox-label {
+    padding-left: 1rem;
+}
+
+body#extension button {
+    width: fit-content;
+}
+
+body#extension h1 {
+    padding-bottom: 1rem;
 }
 
 @media (min-width: 1400px) {

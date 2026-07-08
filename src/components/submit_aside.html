@@ -4,9 +4,11 @@
         name="url"
         placeholder="https://example.com (or a feed URL)"
         required
+        id="url-input"
+        value="{{ p.url ?? ''}}"
     />
     <label class="checkbox-label">
         <input type="checkbox" name="no_rss" />no rss
     </label>
-    <button type="submit" class="btn">add</button>
+    <button type="submit" class="btn">submit</button>
 </form>
