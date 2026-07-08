@@ -429,10 +429,6 @@ body#extension input {
     flex: unset;
 }
 
-body#extension input#url-input {
-    margin-bottom: 1rem;
-}
-
 body#extension label.checkbox-label {
     padding-left: 1rem;
 }
