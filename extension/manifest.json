@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Blogson addon",
-  "description": "uqwe",
+  "description": "HELLO !!!",
   "version": "1.0",
   "permissions": ["activeTab"],
   "host_permissions": ["*://blogsoni.duckdns.org/*"],
@@ -10,11 +10,12 @@
     "default_title": "blogson",
     "default_popup": "popup.html"
   },
-  "background": {
-    "scripts": ["background.js"],
-    "persistent": false
-  },
   "browser_specific_settings": {
-    "gecko": { "id": "jan@nejka.net" }
+    "gecko": {
+      "id": "jan@nejka.net",
+      "data_collection_permissions": {
+        "required": ["browsingActivity"]
+      }
+    }
   }
 }
