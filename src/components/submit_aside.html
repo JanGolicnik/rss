@@ -1,4 +1,8 @@
-<form action="/submit" method="post" style="display: contents">
+<form
+    action="{{ p.post_url ?? '/submit'}}"
+    method="post"
+    style="display: contents"
+>
     <input
         type="text"
         name="url"
