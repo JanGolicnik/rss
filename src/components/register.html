@@ -1,0 +1,23 @@
+<form action="/register/?invite={{{p.invite}}}" method="post">
+    <input
+        type="text"
+        name="username"
+        placeholder="username"
+        required
+    />
+    <input
+        type="password"
+        name="password"
+        placeholder="password"
+        required
+    />
+    <input
+        type="password"
+        name="password2"
+        placeholder="repeat password"
+        required
+    />
+    <button type="submit" class="btn">register</button>
+</form>
+
+<p>or if you already have an account you can just <a href="/login">login</a></p>

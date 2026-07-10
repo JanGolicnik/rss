@@ -55,6 +55,11 @@ p {
     color: var(--fg-dim);
 }
 
+a, a:visited {
+    color: var(--fg-dim);
+    text-decoration: none;
+}
+
 main {
     color: var(--fg);
     font-family: var(--font);
@@ -64,15 +69,6 @@ main {
     flex-direction: column;
     width: 100%;
     max-width: var(--main-width);
-}
-
-a {
-    color: var(--link);
-    text-decoration: none;
-}
-
-a:visited {
-    color: var(--link);
 }
 
 a:hover {
@@ -203,7 +199,8 @@ aside.options {
     gap: 0.5rem;
 }
 
-.entry-main a {
+
+a.entry-title {
     flex: 1 1 auto;
     min-width: 0;
     word-break: break-word;
@@ -211,9 +208,11 @@ aside.options {
     margin-right: auto;
     max-height: 3rem;
     overflow: hidden;
+    color: var(--link);
+    text-decoration: none;
 }
 
-.entry a:visited {
+a.entry-title:visited {
     color: var(--link-visited);
 }
 

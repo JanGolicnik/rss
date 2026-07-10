@@ -83,8 +83,43 @@ function init_db(path) {
       auth TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      mail TEXT,
+      site TEXT,
+      description TEXT,
+      banned BOOLEAN,
+      can_invite BOOLEAN,
+      can_post BOOLEAN,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+    );
+    CREATE TABLE IF NOT EXISTS invites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hash TEXT NOT NULL UNIQUE,
+      inviter_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content TEXT NOT NULL UNIQUE,
+      entry_id INTEGER REFERENCES entries(id) ON DELETE CASCADE,
+      author_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+    );
     CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC);
   `);
+
+  let user_version = db.query("PRAGMA user_version").get().user_version;
+  console.log(`running db version ${user_version}`);
+  if (user_version <= 0)
+  {
+    user_version++
+    db.query("ALTER TABLE feeds ADD COLUMN added_by INTEGER REFERENCES users(id)").get();
+    db.query("UPDATE feeds SET added_by = 1 WHERE added_by IS NULL").get();
+    db.query("CREATE UNIQUE INDEX users_username_key ON users (username)").get();
+  }
+  db.query(`PRAGMA user_version = ${user_version}`).get();
 }
 
 function route_index(req) {
@@ -103,6 +138,7 @@ function route_index(req) {
       f.added_at as date, NULL, NULL, NULL, NULL, NULL,
       f.title, f.url, f.description, f.is_bookmark, 1 as is_fake
     FROM feeds f
+    WHERE f.is_bookmark = 0
   `;
 
   const sql = `
@@ -124,6 +160,7 @@ function route_index(req) {
     feeds: db.query(`SELECT title, url FROM feeds ORDER BY title, url`).all(),
     range,
     sites_only,
+    session: req.session
   });
 }
 
@@ -443,20 +480,13 @@ function route_favicon(req) {
   }
 }
 
-function is_admin_auth(auth) {
-  return (
-    (auth.username ?? "") === process.env.ADMIN_USER &&
-    (auth.password ?? "") === process.env.ADMIN_PASS
-  );
-}
-
 function require_login(req) {
   if (req.session) return;
-  if (req.auth && is_admin_auth(req.auth)) {
-    server.add_session(req, { ...req.auth });
-    return;
-  }
-  return pici.prompt_login();
+  return pici.redirect("/login");
+}
+
+function require_admin(req) {
+  if (!req.session?.is_admin) return pici.redirect("/");
 }
 
 function route_delete_post(req) {
@@ -541,27 +571,191 @@ async function route_extension_post(req) {
   return route_extension(req, await try_submit(req));
 }
 
+async function route_login(req, msg) {
+  return server.render("login.html", { msg });
+}
+
+async function route_login_post(req) {
+  if (!req.body) return route_login(req, "form body missing i think ?");
+  if (!req.body.username) return route_login(req, "username required");
+  if (!req.body.password) return route_login(req, "password required");
+
+  const user = db.query("SELECT id, username, password_hash, banned FROM users WHERE username = ?").get(req.body.username);
+
+  if (!user) return route_login(req, "incorrect username or password");
+  if (user.banned) return route_login(req, "this user has been banned :(");
+
+  if (!await Bun.password.verify(req.body.password, user.password_hash)) return route_login(req, "incorrect username or password");
+
+  server.add_session(req, { username: user.username, is_admin: user.id === 1, id: user.id });
+  return pici.redirect("/");
+}
+
+async function route_register(req, msg) {
+  return req.params.invite ?
+    server.render("register.html", { msg, invite: req.params.invite }) :
+    pici.redirect("/");
+}
+
+function register_validate_username_password(username, password, password2)
+{
+  if (!username) return "username required";
+  if (!password) return "password required";
+  if (!password2) return "confirmation password required";
+  if (!password != !password2) return "passwords dont match";
+  if (username.length > 30) return "username is max 30 characters";
+  if (password.length > 30) return "password is max 30 characters";
+}
+
+async function route_register_post(req) {
+  if (!req.body) return route_register(req, "form body missing i think ?");
+  if (!req.params.invite) return pici.redirect("/");
+
+  const error = register_validate_username_password(req.body.username, req.body.password, req.body.password2);
+  if (error) return route_register(req, error);
+
+  const invite_hash = req.params.invite;
+  const invited_by = db.query("SELECT inviter_id FROM invites WHERE hash = ?").get(invite_hash)?.inviter_id;
+  if (!invited_by) return pici.redirect("/");
+
+  const password_hash = await Bun.password.hash(req.body.password);
+  try {
+    db.query("INSERT INTO users (username, password_hash, invited_by) VALUES (?, ?, ?)").run(req.body.username, password_hash, invited_by);
+    db.query("DELETE FROM invites WHERE hash = ?").run(invite_hash);
+    return pici.redirect("/login");
+  }
+  catch (e)
+  {
+    return route_register(req, e.code === "SQLITE_CONSTRAINT_UNIQUE" ? "username alr taken" : "smth happened idk");
+  }
+}
+
+function route_profile(req, msg)
+{
+  const id = req.params?.id ?? null;
+  if (!id) return pici.not_found();
+  const user = db.query("SELECT id, username, site, mail, description, created_at, invited_by FROM users WHERE id = ?").get(id);
+  if (!user) return pici.not_found();
+  if (user.invited_by)
+    user.invited_by = db.query("SELECT username FROM users WHERE id = ?").get(user.invited_by)?.username;
+  const invite = db.query("SELECT hash FROM invites WHERE inviter_id = ?").get(id)?.hash;
+  return server.render("profile.html", { user, msg, session: req.session, invite });
+}
+
+function route_profile_post(req)
+{
+  const id = req.params?.id ?? null;
+  if (!id) return pici.not_found();
+  db.query(`
+    UPDATE users SET site = ?, mail = ?, description = ? WHERE id = ?`
+  ).run(req.body.site ?? null, req.body.mail ?? null, req.body.description ?? null, id);
+  return route_profile(req, "updated !");
+}
+
+function route_logout_post(req)
+{
+  server.remove_session(req);
+  return pici.redirect(`/profile/?id=${req.session.id}`);
+}
+
+function route_create_invite(req)
+{
+  const result = db.query(`
+    INSERT INTO invites (hash, inviter_id)
+    SELECT ?, ?
+    WHERE (
+      SELECT count(id) FROM invites
+      WHERE inviter_id = ?
+    ) < 1;
+    `).run(Bun.randomUUIDv7(), req.session.id, req.session.id);
+  if (result.changes === 0)
+  {
+    req.params.id = req.session.id; // HACk
+    return route_profile(req, "cant have more than 1 invite");
+  }
+  return pici.redirect(`/profile/?id=${req.session.id}`);
+}
+
+function route_entry(req)
+{
+  const id = req.params.id;
+  if (!id) return pici.not_found();
+  const entry = db.query("SELECT * FROM entries WHERE id = ?").get(id);
+  if (!entry) return pici.not_found();
+  const comments = db.query(`
+    SELECT c.content, c.author_id, u.username
+    FROM comments c
+    JOIN users u ON u.id = c.author_id
+    WHERE c.entry_id = ?
+  `).all(id);
+  return server.render("entry.html", { entry, comments, session: req.session });
+}
+
+function route_entry_post(req)
+{
+  const id = req.params.id;
+  if (!id) return pici.not_found();
+  const content = req.body.content?.trim() ?? '';
+  if (content === '') return route_entry(req);
+  db.query("INSERT INTO comments (content, entry_id, author_id) VALUES (?, ?, ?)").run(content, id, req.session.id);
+  return route_entry(req);
+}
+
 const server = pici.create({
+  render: gss.render,
   get: {
     "/": route_index,
-    "/submit": route_submit,
+    "/favicon": route_favicon,
     "/about": () => server.render("about.html"),
-    "/admin": {
+    "/submit": {
       check: [require_login],
+      route: route_submit
+    },
+    "/admin": {
+      check: [require_login, require_admin],
       route: route_admin,
     },
-    "/favicon": route_favicon,
     "/go": route_go,
     "/random": route_random,
     "/extension": route_extension,
+    "/login": route_login,
+    "/register": route_register,
+    "/profile": route_profile,
+    "/create_invite": {
+      check: [require_login],
+      route: route_create_invite
+    },
+    "/entry": route_entry,
   },
   post: {
-    "/submit": route_submit_post,
-    "/delete": route_delete_post,
+    "/submit": {
+      check: [require_login],
+      route: route_submit_post
+    },
+    "/delete": {
+      check: [require_login, require_admin],
+      route: route_delete_post
+    },
     "/subscribe": route_subscribe_post,
-    "/extension": route_extension_post,
+    "/extension": {
+      check: [require_login],
+      route: route_extension_post
+    },
+    "/login": route_login_post,
+    "/logout": {
+      check: [require_login],
+      route: route_logout_post
+    },
+    "/register": route_register_post,
+    "/profile": {
+      check: [require_login],
+      route: route_profile_post
+    },
+    "/entry": {
+      check: [require_login],
+      route: route_entry_post
+    },
   },
-  render: gss.render,
 });
 
 init_db(process.env.DATABASE ?? "links.db");

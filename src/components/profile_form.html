@@ -1,0 +1,27 @@
+<form action="/profile/?id={{p.session.id}}" method="post">
+    <input
+        type="text"
+        name="mail"
+        placeholder="mail"
+        value="{{p.user.mail ?? ''}}"
+    />
+    <input
+        type="text"
+        name="site"
+        placeholder="site"
+        value="{{p.user.site ?? ''}}"
+    />
+    <input
+        type="text"
+        name="description"
+        placeholder="description"
+        value="{{p.user.description ?? ''}}"
+    />
+    <button type="submit" class="btn">update</button>
+</form>
+
+<form action="/logout" method="post">
+    <button type="submit" class="btn">logout</button>
+</form>
+
+{{{ p.invite ? `<a href="/register/?invite=${p.invite}">invite</a>` : `<a href="/create_invite" class="btn">create invite</a>` }}}

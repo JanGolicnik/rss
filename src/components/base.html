@@ -20,7 +20,7 @@
         <iframe id="site-preview" src="about:blank" title="page"></iframe>
 
         <footer>
-            <a href="/admin">admin</a>
+            {{{ p.session?.is_admin ? `<a href="/admin">admin</a>` : "" }}}
             <a href="https://github.com/JanGolicnik/rss">source</a>
             <a href="https://github.com/JanGolicnik">my github</a>
         </footer>

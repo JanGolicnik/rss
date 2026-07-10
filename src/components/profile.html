@@ -1,0 +1,13 @@
+<p>{{(p.session?.id == p.user.id) ? "hi " : "profile of "}} {{p.user.username}} !</p>
+<script &&>
+  if (p.session?.id == p.user.id)
+    return c.profile_form(p);
+
+  return `
+      <p>joined: ${escape(p.user.created_at)}</p>
+      <p>invited_by: ${escape(p.user.invited_by)}</p>
+      ${p.user.site ? `<p>site: <a href="${escape(p.user.site)}">${escape(p.user.site)}</a>` : ''}
+      ${p.user.mail ? `<p>mail: ${escape(p.user.mail)}</p>` : ''}
+      ${p.user.description ? `<p>about: ${escape(p.user.description)}</p>` : ''}
+      `;
+</script>
