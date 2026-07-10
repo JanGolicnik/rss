@@ -9,15 +9,19 @@
     </head>
 
     <body>
-        <header>{{{ p.header ?? "" }}}</header>
+        <div id="left-right">
+            <div>
+                <header>{{{ p.header ?? "" }}}</header>
 
-        <aside class="msg">{{{ p.msg ?? "" }}}</aside>
+                <aside class="msg">{{{ p.msg ?? "" }}}</aside>
 
-        <aside class="options">{{{ p.aside ?? "" }}}</aside>
+                <aside class="options">{{{ p.aside ?? "" }}}</aside>
 
-        <main>{{{ p.body ?? "" }}}</main>
+                <main>{{{ p.body ?? "" }}}</main>
+            </div>
 
-        <iframe id="site-preview" src="about:blank" title="page"></iframe>
+            <iframe id="site-preview" src="about:blank" title="page"></iframe>
+        </div>
 
         <footer>
             {{{ p.session?.is_admin ? `<a href="/admin">admin</a>` : "" }}}

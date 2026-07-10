@@ -443,13 +443,15 @@ body#extension h1 {
 @media (min-width: 1400px) {
     body {
         max-width: none;
-
-        grid-template-columns: var(--main-width) 1fr;
-        grid-template-rows: auto auto auto 1fr auto;
+    }
+    #left-right{
+        display:flex;
+        flex-direction: row;
+    }
+    main{
+        min-width: var(--main-width);
     }
     iframe {
-        grid-column: 2;
-        grid-row: 1 / 6;
         display: block;
         position: sticky;
         top: 1.5rem;

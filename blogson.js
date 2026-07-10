@@ -108,6 +108,8 @@ function init_db(path) {
       author_id INTEGER REFERENCES users(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC);
+    CREATE INDEX IF NOT EXISTS comments_entry_id_idx ON comments(entry_id);
+    CREATE INDEX IF NOT EXISTS entries_feed_id_idx ON feeds(id);
   `);
 
   let user_version = db.query("PRAGMA user_version").get().user_version;
@@ -136,17 +138,31 @@ function route_index(req) {
     UNION ALL
     SELECT NULL, f.url, 'New feed: ' || COALESCE(f.title, f.url),
       f.added_at as date, NULL, NULL, NULL, NULL, NULL,
-      f.title, f.url, f.description, f.is_bookmark, 1 as is_fake
+      f.title, f.url, f.description, f.is_bookmark, 1 as is_fake, NULL as comments
     FROM feeds f
     WHERE f.is_bookmark = 0
   `;
+
+  const comments = `(
+    SELECT json_group_array(
+             json_object('content', content, 'author_id', author_id, 'username', username)
+           )
+    FROM (
+      SELECT c.content, c.author_id, u.username
+      FROM comments c
+      LEFT JOIN users u ON u.id = c.author_id
+      WHERE c.entry_id = e.id
+      ORDER BY c.id DESC
+      LIMIT 3
+    )
+  )`
 
   const sql = `
       SELECT * FROM (
         SELECT e.id, e.url, e.title, e.date as date, e.visits, e.author, e.tags,
           e.hn_url, e.lobste_url,
           f.title AS feed_title, f.url AS feed_url,
-          f.description AS feed_desc, f.is_bookmark, 0 as is_fake
+          f.description AS feed_desc, f.is_bookmark, 0 as is_fake, ${comments} as comments
         FROM entries e
         JOIN feeds f ON e.feed_id = f.id
         ${union}
@@ -155,8 +171,13 @@ function route_index(req) {
       ORDER BY date DESC
   `;
 
+  const entries = db.query(sql).all();
+  for (const e of entries) {
+    e.comments = e.comments ? JSON.parse(e.comments) : [];
+  }
+
   return server.render("index.html", {
-    entries: db.query(sql).all(),
+    entries,
     feeds: db.query(`SELECT title, url FROM feeds ORDER BY title, url`).all(),
     range,
     sites_only,
@@ -688,7 +709,7 @@ function route_entry(req)
     JOIN users u ON u.id = c.author_id
     WHERE c.entry_id = ?
   `).all(id);
-  return server.render("entry.html", { entry, comments, session: req.session });
+  return server.render("entry.html", { entry: {...entry, comments}, session: req.session });
 }
 
 function route_entry_post(req)

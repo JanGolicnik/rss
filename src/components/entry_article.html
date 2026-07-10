@@ -73,7 +73,7 @@
   let out = "";
   for (const comment of p.comments)
   {
-    out += `<p><a href="/profile/id?=${comment.author_id}">${escape(comment.username)}</a>: ${escape(comment.content)}</p>`;
+    out += `<p><a href="/profile/?id=${comment.author_id}">${escape(comment.username)}</a>: ${escape(comment.content)}</p>`;
   }
   return out;
 </script>
