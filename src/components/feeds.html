@@ -9,7 +9,7 @@
     </div>
     <span class="feed-count">${feed.entry_count} links</span>
     ${
-        p.delete
+        p.session.is_admin
             ? `
             <form action="delete/?feed_id=${feed.id}" method="post" onsubmit="return confirm('Remove this feed and all its entries?');">
               <button type="submit" class="btn btn-danger">remove</button>

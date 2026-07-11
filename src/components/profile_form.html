@@ -1,4 +1,4 @@
-<form action="/profile/?id={{p.user.id}}" method="post">
+<form class="vertical" action="/profile/?id={{p.user.id}}" method="post">
     <input
         type="text"
         name="mail"
@@ -20,10 +20,10 @@
     <button type="submit" class="btn">update</button>
 </form>
 
-<form action="/logout" method="post">
-    <button type="submit" class="btn">logout</button>
+<form class="vertical" action="/logout" method="post">
+    <button type="submit" class="btn">log out</button>
 </form>
 
 {{{ !p.user.cant_invite ?
-    p.invite ? `<a href="/register/?invite=${p.invite}">invite</a>` : `<a href="/create_invite" class="btn">create invite</a>`
+    p.invite ? `<p>invite a friend thru this link: <a class="regular" href="/register/?invite=${p.invite}">invite</a>!</p>` : `<a href="/create_invite" class="btn">create invite</a>`
 : "" }}}

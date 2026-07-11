@@ -1,15 +1,31 @@
-<p>{{(p.session?.id == p.user.id) ? "hi " : "profile of "}} {{p.user.username}} !</p>
-<script &&>
-  if (p.session?.id == p.user.id)
-    return c.profile_form(p);
+<h2>
+    {{(p.session?.id == p.user.id) ? "hi " : ""}}
+    {{p.user.username}}{{p.session?.id != p.user.id ? "'s profile" : ''}}!
+</h2>
 
-  return `
+<script &&>
+    if (p.session?.id === p.user.id) return c.profile_form(p);
+
+    return `
       <p>joined: ${escape(p.user.created_at)}</p>
-      <p>invited_by: ${escape(p.user.invited_by)}</p>
-      ${p.user.site ? `<p>site: <a href="${escape(p.user.site)}">${escape(p.user.site)}</a>` : ''}
-      ${p.user.mail ? `<p>mail: ${escape(p.user.mail)}</p>` : ''}
-      ${p.user.description ? `<p>about: ${escape(p.user.description)}</p>` : ''}
+      ${p.user.invited_by ? `<p>invited by: <a class="regular" href="/profile/?id=${p.user.invited_by}">${escape(p.user.invited_by_username)}</a></p>` : ""}
+      ${p.user.site ? `<p>site: <a class="regular" href="${escape(p.user.site)}">${escape(p.user.site)}</a>` : ""}
+      ${p.user.mail ? `<p>mail: ${escape(p.user.mail)}</p>` : ""}
+      ${p.user.description ? `<p>about: ${escape(p.user.description)}</p>` : ""}
+      <br>
       `;
 </script>
 
-{{{ p.session?.is_admin ? c.profile_admin_form(p) : '' }}}
+<script &&>
+    let out = [];
+    for (const invitee of p.invitees) {
+        out.push(
+            `<a class="regular" href="/profile?id=${invitee.id}">${escape(invitee.username)}</a>`,
+        );
+    }
+    if (out.length === 0) return "";
+    return "<p>they invited: " + out.join(", ") + "</p>";
+</script>
+
+{{{ p.session?.is_admin && p.session?.id !== p.user.id ? c.profile_admin_form(p)
+: '' }}}

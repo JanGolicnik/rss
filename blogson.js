@@ -101,6 +101,12 @@ function init_db(path) {
       hash TEXT NOT NULL UNIQUE,
       inviter_id INTEGER REFERENCES users(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS visits (
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      entry_id   INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, entry_id)
+    );
     CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC);
     CREATE INDEX IF NOT EXISTS entries_feed_id_idx ON feeds(id);
   `);
@@ -123,7 +129,7 @@ function init_db(path) {
     db.query(
       `CREATE TABLE comments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      content TEXT NOT NULL UNIQUE,
+      content TEXT NOT NULL,
       entry_id INTEGER REFERENCES entries(id) ON DELETE CASCADE,
       author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -139,6 +145,11 @@ function init_db(path) {
     db.query("ALTER TABLE users RENAME COLUMN can_invite TO cant_invite").run();
     db.query("ALTER TABLE users RENAME COLUMN can_post TO cant_post").run();
   }
+  if (user_version <= 3) {
+    user_version++;
+    db.query("ALTER TABLE entries DROP COLUMN visits").run();
+    db.query("ALTER TABLE entries DROP COLUMN last_visit_at").run();
+  }
   db.query(`PRAGMA user_version = ${user_version}`).get();
 }
 
@@ -150,24 +161,25 @@ function route_index(req) {
   const time_filter = days ? `AND date >= datetime('now', '${days} days')` : "";
   const bookmark_filter = sites_only ? "AND is_bookmark = 1" : "";
 
-  const union = sites_only
-    ? ""
-    : `
+  const union = !sites_only
+    ? `
     UNION ALL
     SELECT NULL, f.url, 'New feed: ' || COALESCE(f.title, f.url), f.added_at as date,
       NULL, NULL, NULL, NULL, NULL,
       0 as is_bookmark, 1 as is_fake,
-      0 as n_comments
+      0 as n_comments,
+      0 as visited
     FROM feeds f
     WHERE f.is_bookmark = 0
-  `;
+  ` : '';
 
   const sql = `
       SELECT * FROM (
         SELECT e.id, e.url, e.title, e.date as date,
           e.author, e.tags, e.hn_url, e.lobste_url, f.title AS feed_title,
           f.is_bookmark, 0 as is_fake,
-          (SELECT COUNT(*) FROM comments c WHERE c.entry_id = e.id) AS n_comments
+          (SELECT COUNT(*) FROM comments c WHERE c.entry_id = e.id) AS n_comments,
+          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.user_id = ?) AS visited
         FROM entries e
         JOIN feeds f ON e.feed_id = f.id
         ${union}
@@ -177,7 +189,7 @@ function route_index(req) {
   `;
 
   return server.render("index.html", {
-    entries: db.query(sql).all(),
+    entries: db.query(sql).all(req.session?.id ?? null),
     range,
     sites_only,
     session: req.session,
@@ -259,20 +271,15 @@ async function discover_feed(url, content) {
 }
 
 async function validate_feed(url, skip_parse) {
-  url = url.trim();
   if (!url) return { error: "Url is required" };
   if (!url.startsWith("http://") && !url.startsWith("https://"))
     return { error: "URL must start with http:// or https://" };
-  if (db.query("SELECT 1 FROM feeds WHERE url = ?").get(url))
-    return { error: "Already exists" };
 
   let { error, content, resolved } = await fetch_url(url);
   if (error) return { error };
 
-  if (db.query("SELECT 1 FROM feeds WHERE url = ?").get(resolved))
-    return { error: "Already exists" };
-
-  return skip_parse ? { resolved } : await discover_feed(resolved, content);
+  if (skip_parse) return { resolved };
+  return await discover_feed(resolved, content);
 }
 
 function normalize_url(url) {
@@ -445,10 +452,16 @@ async function poll_all() {
 }
 
 async function insert_feed(url, bookmark) {
-  db.query("INSERT INTO feeds (url, is_bookmark) VALUES (?, ?)").run(
-    url,
-    bookmark ? 1 : 0,
-  );
+  try {
+    db.query("INSERT INTO feeds (url, is_bookmark) VALUES (?, ?)").run(
+      url,
+      bookmark ? 1 : 0,
+    );
+  } catch (e) {
+    return e.code === "SQLITE_CONSTRAINT_UNIQUE"
+      ? "already exists"
+      : "unknown error";
+  }
 
   const feed_id = db.query("SELECT id FROM feeds WHERE url = ?").get(url).id;
 
@@ -473,7 +486,7 @@ async function insert_feed(url, bookmark) {
     );
   }
 
-  return `Added ${url}`;
+  return `added ${url}`;
 }
 
 async function try_submit(req) {
@@ -484,7 +497,7 @@ async function try_submit(req) {
     .get(req.session.id)?.cant_post;
   if (cant_post) return "you cant post im sorry";
 
-  const url = req.body.url ?? "";
+  const url = req.body.url?.trim() ?? "";
   const bookmark = (req.body.no_rss ?? 0) === "on";
 
   const { error, resolved } = await validate_feed(url, bookmark);
@@ -544,19 +557,15 @@ function route_delete_post(req) {
 function route_go(req) {
   const entry_id = req.params.entry_id;
   if (!entry_id) return pici.redirect("/");
-  const entry = db
-    .query(
-      "SELECT url, (julianday('now') - julianday(last_visit_at)) * 86400 as secs FROM entries WHERE id = ?",
-    )
-    .get(entry_id);
-  if (!entry) return pici.redirect("/");
 
-  if ((entry.secs ?? 1000) > 30) {
-    db.query(
-      `UPDATE entries SET visits = visits + 1, last_visit_at = datetime('now')
-          WHERE id = ?`,
-    ).run(entry_id);
+  if (req.session)
+  {
+    try {
+      db.query("INSERT INTO visits (user_id, entry_id) VALUES (?, ?)").run(req.session.id, entry_id);
+    } catch (e) {}
   }
+
+  const entry = db.query("SELECT url FROM entries WHERE id = ?").get(entry_id);
 
   return pici.redirect(entry.url);
 }
@@ -710,17 +719,19 @@ function route_profile(req, msg) {
   const user = db.query("SELECT * FROM users WHERE id = ?").get(id);
   if (!user) return pici.not_found();
   if (user.invited_by)
-    user.invited_by = db
+    user.invited_by_username = db
       .query("SELECT username FROM users WHERE id = ?")
       .get(user.invited_by)?.username;
   const invite = db
     .query("SELECT hash FROM invites WHERE inviter_id = ?")
     .get(id)?.hash;
+  const invitees = db.query("SELECT * FROM users WHERE invited_by = ?").all(id);
   return server.render("profile.html", {
     user,
     msg,
     session: req.session,
     invite,
+    invitees,
   });
 }
 
@@ -820,10 +831,13 @@ function route_entry_post(req) {
   return route_entry(req);
 }
 
-function route_about(req)
-{
+function route_about(req) {
+  return server.render("about.html", { session: req.session });
+}
+
+function route_users(req) {
   const users = db.query("SELECT * FROM users").all();
-  return server.render("about.html", { users, session: req.session });
+  return server.render("users.html", { users, session: req.session });
 }
 
 const server = pici.create({
@@ -842,6 +856,7 @@ const server = pici.create({
     "/profile": route_profile,
     "/create_invite": [require_login, route_create_invite],
     "/entry": route_entry,
+    "/users": route_users,
   },
   post: {
     "/submit": [require_login, route_submit_post],

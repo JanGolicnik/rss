@@ -1,22 +1,20 @@
-{{{ [...about.content.map((l) => `<p> ${l}</p>`)].join("") }}}
+<p>hello ! hope youre doing alright</p>
 
-<script &&>
-const children = new Map();
-for (const u of p.users) {
-  const key = u.invited_by ?? null;
-  if (!children.has(key)) children.set(key, []);
-  children.get(key).push(u);
-}
+<h3>what</h3>
+<p> blogsoni is a feed / link aggregator heavily inspired by lobste.rs where people submit
+    links to blogs they like and they get polled every few hours for new stuff.
+    users can also just submit cool sites by checking the "no rss" option when submitting.
+</p>
+<p>its also an invite only system so you gotta get an invite from one of the members to be able to submit / comment.</p>
 
-function node(u) {
-  const kids = children.get(u.id) ?? [];
-  let out = `<li><a href="/profile/?id=${u.id}">${escape(u.username)} (${kids.length}) </a>`;
-  if (kids.length) {
-    out += "<ul>" + kids.map(node).join("") + "</ul>";
-  }
-  return out + "</li>";
-}
+<h3>why</h3>
+<p>human made content is really really awesome but its hard to keep track of.</p>
+<p>thats why rss readers exist but i want to read blogs on the blog site itself, like the author intended it to be read.</p>
+<p>at first i made this for myself but i dont see why it wouldnt be open to others, if you own a blog or know of any really cool ones please submit them !</p>
 
-const roots = children.get(null) ?? [];
-return "<ul class='tree'>" + roots.map(node).join("") + "</ul>";
-</script>
+<h3>extra</h3>
+<p>suggestions / bugs are super welcome !</p>
+<p>if your blog has been submitted here i want you to know that youre really cool and you get an invite by default.
+    you can also always ask for it to be removed.
+</p>
+<p>all users are public and the invite tree can be found <a class="regular" href="/users">here</a>.</p>

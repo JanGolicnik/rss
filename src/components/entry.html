@@ -1,5 +1,6 @@
 {{{ c.entry_article(p.entry) }}}
 
+<div class="comments">
 <script &&>
   let out = "";
   for (const comment of p.comments)
@@ -8,6 +9,7 @@
   }
   return out;
 </script>
+</div>
 
 {{{ p.session ?
 `
