@@ -1,6 +1,7 @@
 <script &&>
     return c.base({
-        header: c.header(),
+        ...p,
+        header: c.header({...p, extra: "discuss"}),
         body: c.entry(p),
         script: "/public/app.js",
     });

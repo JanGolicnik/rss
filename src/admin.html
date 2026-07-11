@@ -1,8 +1,10 @@
 <script &&>
     return c.base({
+        ...p,
         header: c.header({
+            ...p,
             extra: `${p.n_feeds} feeds, ${p.feeds.length - p.n_feeds} sites`,
         }),
-        body: c.feeds({ feeds: p.feeds, delete: true }),
+        body: c.feeds({ ...p, delete: true }),
     });
 </script>

@@ -59,7 +59,7 @@ function parseURL() {
 
   let select = document.querySelector(".feed-select");
   if (select) select.value = feed;
-  document.querySelectorAll(".entry").forEach(function (entry) {
+  document.querySelectorAll(".entry").forEach((entry) => {
     entry.style.display = entry.dataset.feed === feed ? "" : "none";
   });
 }
@@ -195,11 +195,11 @@ function getTopColors(img) {
 }
 
 function applyColors(domain, colors) {
-  let rgb = (c) => {
+  const rgb = (c) => {
     return "rgb(" + c.r + "," + c.g + "," + c.b + ")";
   };
-  let c1 = rgb(colors[0]);
-  let c2 = rgb(colors[1]);
+  const c1 = rgb(colors[0]);
+  const c2 = rgb(colors[1]);
   document
     .querySelectorAll(`article[data-domain="${domain}"].needs-favicon`)
     .forEach(function (entry) {
@@ -212,17 +212,20 @@ function applyColors(domain, colors) {
 }
 
 function updateFavicons() {
-  let domains = new Set();
+  const domains = new Set();
   let onImgReady = (img, domain) => {
-    let colors = getTopColors(img);
+    const colors = getTopColors(img);
     if (colors) applyColors(domain, colors);
   };
   document.querySelectorAll("article").forEach((entry) => {
-    let domain = entry.dataset.domain;
+    const domain = entry.dataset.domain;
     if (domains.has(domain)) return;
+
+    const img = entry.querySelector("img");
+    if (!img) return;
+
     domains.add(domain);
 
-    let img = entry.querySelector("img");
     if (img.complete) onImgReady(img, domain);
     else img.addEventListener("load", () => onImgReady(img, domain));
     img

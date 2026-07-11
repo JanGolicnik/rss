@@ -1,8 +1,10 @@
 <script &&>
     return c.base({
+        ...p,
         header: c.header({
+            ...p,
             extra: `about`,
         }),
-        body: [...about.content.map((l) => `<p> ${l}</p>`)].join(""),
+        body: c.about(p),
     });
 </script>

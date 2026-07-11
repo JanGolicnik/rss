@@ -1,0 +1,22 @@
+{{{ [...about.content.map((l) => `<p> ${l}</p>`)].join("") }}}
+
+<script &&>
+const children = new Map();
+for (const u of p.users) {
+  const key = u.invited_by ?? null;
+  if (!children.has(key)) children.set(key, []);
+  children.get(key).push(u);
+}
+
+function node(u) {
+  const kids = children.get(u.id) ?? [];
+  let out = `<li><a href="/profile/?id=${u.id}">${escape(u.username)} (${kids.length}) </a>`;
+  if (kids.length) {
+    out += "<ul>" + kids.map(node).join("") + "</ul>";
+  }
+  return out + "</li>";
+}
+
+const roots = children.get(null) ?? [];
+return "<ul class='tree'>" + roots.map(node).join("") + "</ul>";
+</script>

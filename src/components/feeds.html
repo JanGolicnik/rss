@@ -4,8 +4,8 @@
             (feed) => `
   <li class="feed-item">
     <div class="feed-info">
-      <div class="feed-title">${feed.title ?? "untitled"}</div>
-      <div class="feed-url">${feed.url}</div>
+      <div class="feed-title">${escape(feed.title) ?? "untitled"}</div>
+      <div class="feed-url">${escape(feed.url)}</div>
     </div>
     <span class="feed-count">${feed.entry_count} links</span>
     ${

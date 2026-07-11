@@ -3,14 +3,7 @@
 <a class={{{ `"btn ${p.range === "all" ? "active" : ""}"` }}}   href="#" onclick="filterTime('all')">all</a>
 <a class={{{ `"btn ${p.sites_only ? "active" : ""}"` }}}        href="#" onclick="filterSites()">sites</a>
 
-<select class="feed-select" onchange="filterFeed(this.value)">
-  <option value="">all feeds</option>
-  <script &&>
-  let out = "";
-  for (const feed of p.feeds)
-  {
-    out += `<option value="${ feed.title ?? feed.url }">${ (feed.title ?? feed.url).slice(0, 20) }</option>`
-  }
-  return out;
-  </script>
-</select>
+<div class="margin-left">
+    <a href="/random" class="btn" rel="noopener">random</a>
+    {{{ p.session ? `<a href="/submit" class="btn">submit</a>` : '' }}}
+</div>

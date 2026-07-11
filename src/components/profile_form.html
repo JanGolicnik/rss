@@ -1,4 +1,4 @@
-<form action="/profile/?id={{p.session.id}}" method="post">
+<form action="/profile/?id={{p.user.id}}" method="post">
     <input
         type="text"
         name="mail"
@@ -24,4 +24,6 @@
     <button type="submit" class="btn">logout</button>
 </form>
 
-{{{ p.invite ? `<a href="/register/?invite=${p.invite}">invite</a>` : `<a href="/create_invite" class="btn">create invite</a>` }}}
+{{{ !p.user.cant_invite ?
+    p.invite ? `<a href="/register/?invite=${p.invite}">invite</a>` : `<a href="/create_invite" class="btn">create invite</a>`
+: "" }}}

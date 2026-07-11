@@ -1,7 +1,8 @@
 <script &&>
     return c.base({
-        header: c.header({extra: "log in !"}),
+        ...p,
+        header: c.header({ ...p, extra: "log in !"}),
         msg: p.msg,
-        body: c.login(),
+        body: c.login(p),
     });
 </script>

@@ -1,3 +1,13 @@
 <a href="/"><h1>blogsoni</h1></a>
 <p class="meta">{{{ p.extra ?? "" }}}</p>
-<div class="right">{{{ p.links ?? "" }}}</div>
+<div class="right">
+    <a href="/about" class="btn">about</a>
+    <a href="#" id="btn_subscribe" class="btn">sub</a>
+    {{{ p.session ? `
+      <a href="/profile?id=${p.session.id}" class="btn">profile</a>
+      ` : `
+      <a href="/login" class="btn" >login</a>
+    `}}}
+</div>
+
+<script src="/public/header.js" defer></script>

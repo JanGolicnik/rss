@@ -1,0 +1,21 @@
+<form action="/profile_admin/?id={{p.user.id}}" method="post">
+    <input
+        type="checkbox"
+        name="banned"
+        {{p.user.banned ? "checked" : ''}}
+    />
+    <label for="banned">banned</label><br>
+    <input
+        type="checkbox"
+        name="cant_invite"
+        {{p.user.cant_invite ? "checked" : ''}}
+    />
+    <label for="cant_invite">cant invite</label><br>
+    <input
+        type="checkbox"
+        name="cant_post"
+        {{p.user.cant_post ? "checked" : ''}}
+    />
+    <label for="cant_post">cant post</label><br>
+    <button type="submit" class="btn">update</button>
+</form>

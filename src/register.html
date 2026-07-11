@@ -1,6 +1,7 @@
 <script &&>
     return c.base({
-        header: c.header({extra: "register !"}),
+        ...p,
+        header: c.header({ ...p, extra: "register !"}),
         msg: p.msg,
         body: c.register(p),
     });

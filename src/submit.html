@@ -1,10 +1,12 @@
 <script &&>
     return c.base({
+        ...p,
         header: c.header({
+            ...p,
             extra: `${p.n_feeds} feeds, ${p.feeds.length - p.n_feeds} sites`,
         }),
         msg: p.msg,
         aside: c.submit_aside(p),
-        body: c.feeds({ feeds: p.feeds }),
+        body: c.feeds(p),
     });
 </script>

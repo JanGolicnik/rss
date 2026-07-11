@@ -1,6 +1,7 @@
 <script &&>
     return c.base({
-        header: c.header(),
+        ...p,
+        header: c.header({...p, extra: "what a cool person"}),
         msg: p.msg,
         body: c.profile(p),
     });

@@ -1,5 +1,14 @@
 {{{ c.entry_article(p.entry) }}}
 
+<script &&>
+  let out = "";
+  for (const comment of p.comments)
+  {
+    out += `<p>${comment.created_at} <a href="/profile/?id=${comment.author_id}">&lt${escape(comment.username)}&gt</a>: ${escape(comment.content)}</p>`;
+  }
+  return out;
+</script>
+
 {{{ p.session ?
 `
 <form action="/entry/?id=${p.entry.id}" method="post">
@@ -7,6 +16,7 @@
         type="text"
         name="content"
         placeholder="something nice"
+        maxlength="1234"
         required
     />
     <button type="submit" class="btn">post</button>

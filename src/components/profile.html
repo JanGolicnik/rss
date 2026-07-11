@@ -11,3 +11,5 @@
       ${p.user.description ? `<p>about: ${escape(p.user.description)}</p>` : ''}
       `;
 </script>
+
+{{{ p.session?.is_admin ? c.profile_admin_form(p) : '' }}}
