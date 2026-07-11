@@ -171,18 +171,23 @@ function route_index(req) {
       ORDER BY date DESC
   `;
 
+  const query_start = performance.now();
   const entries = db.query(sql).all();
   for (const e of entries) {
     e.comments = e.comments ? JSON.parse(e.comments) : [];
   }
+  console.log(`query took ${performance.now() - query_start}ms`);
 
-  return server.render("index.html", {
+  const render_start = performance.now();
+  const render = server.render("index.html", {
     entries,
     feeds: db.query(`SELECT title, url FROM feeds ORDER BY title, url`).all(),
     range,
     sites_only,
     session: req.session
   });
+  console.log(`render took ${performance.now() - render_start}ms`);
+  return render;
 }
 
 function get_all_feeds() {
