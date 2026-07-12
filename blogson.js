@@ -453,6 +453,7 @@ async function insert_feed(url, bookmark, user_id) {
     db.query("INSERT INTO feeds (url, is_bookmark, added_by) VALUES (?, ?, ?)").run(
       url,
       bookmark ? 1 : 0,
+      user_id
     );
   } catch (e) {
     return e.code === "SQLITE_CONSTRAINT_UNIQUE"
