@@ -82,6 +82,10 @@ header p {
     padding: 0;
 }
 
+p.small {
+    font-size: var(--font-small);
+}
+
 h1 {
     font-size: var(--font-big);
     color: var(--accent);
@@ -121,12 +125,11 @@ footer {
 
 header {
     display: flex;
-    gap: 1rem;
     flex-direction: row;
     width: 100%;
     justify-content: center;
     align-items: center;
-    padding: 1rem 0 1rem 1rem;
+    padding: 1rem .5rem 1rem .5rem;
 }
 
 header .subtitle {
@@ -136,6 +139,7 @@ header .subtitle {
 
 header .meta {
     margin-right: auto;
+    margin-left: .5rem;
 }
 
 .margin-left {
@@ -174,28 +178,6 @@ aside {
 
 aside.options {
     padding-bottom: 1rem;
-}
-
-.feed-select {
-    font-size: var(--font-normalsmall);
-    color: var(--fg-dim);
-    background: var(--bg);
-    padding: 0.15rem 0.5rem;
-    cursor: pointer;
-    outline: none;
-    margin-left: auto;
-    max-width: 10rem;
-}
-
-.feed-select:hover,
-.feed-select:focus {
-    color: var(--accent);
-    border-color: var(--accent);
-}
-
-.feed-select option {
-    background: var(--bg);
-    color: var(--fg);
 }
 
 .entry {
@@ -329,21 +311,19 @@ input[type="checkbox"] {
 
 .feed-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: center;
     padding: 0.6rem 0;
     border-bottom: 1px solid var(--border);
     gap: 1rem;
 }
 
-.feed-item:hover {
-    background: var(--input-bg);
-    margin: 0 -0.5rem;
-    padding: 0.6rem 0.5rem;
+.feed-item .feed-count {
+    margin-left: auto;
 }
 
-.feed-info {
-    flex: 1;
+.feed-item:hover {
+    background: var(--input-bg);
 }
 
 .feed-title {
@@ -377,10 +357,10 @@ input[type="checkbox"] {
 }
 
 a.btn,
-button.btn,
-.feed-select {
+button.btn {
     width: fit-content;
     border-bottom: 1px solid var(--border);
+    white-space: nowrap;
 }
 
 a,
@@ -440,6 +420,7 @@ a.comments {
 
 div.comments {
     padding-top: 1rem;
+    padding-left: 1rem;
 }
 
 .tree,
@@ -479,11 +460,6 @@ div.comments {
 
 form {
     color: var(--fg-dim);
-    padding-top: 1rem;
-}
-
-input[type="checkbox"] {
-    margin-bottom: 1rem;
 }
 
 form.vertical {
@@ -536,6 +512,9 @@ body#extension h1 {
 @media (min-width: 1400px) {
     body {
         max-width: none;
+    }
+    header {
+        padding-right: 0;
     }
     main {
         min-width: var(--main-width);

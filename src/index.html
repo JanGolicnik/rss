@@ -3,7 +3,7 @@
         ...p,
         header: c.header({
             ...p,
-            extra: `${p.entries.length} ${p.sites_only ? "sites to check out" : "posts to read"} `,
+            extra: `${p.entries.length} ${p.sites_only ? "sites" : "posts"} `,
         }),
         aside: c.index_aside(p),
         body: c.entries(p),

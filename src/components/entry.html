@@ -5,7 +5,7 @@
   let out = "";
   for (const comment of p.comments)
   {
-    out += `<p>${comment.created_at} <a href="/profile/?id=${comment.author_id}">&lt${escape(comment.username)}&gt</a>: ${escape(comment.content)}</p>`;
+    out += `<p>${comment.created_at} <a class="regular" href="/profile/?id=${comment.author_id}">&lt${escape(comment.username)}&gt</a>: ${escape(comment.content)}</p>`;
   }
   return out;
 </script>

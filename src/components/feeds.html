@@ -3,9 +3,12 @@
         .map(
             (feed) => `
   <li class="feed-item">
-    <div class="feed-info">
-      <div class="feed-title">${escape(feed.title) ?? "untitled"}</div>
-      <div class="feed-url">${escape(feed.url)}</div>
+    <div class="feed-main">
+      <div>
+        <h3 class="feed-title">${escape(feed.title) ?? "untitled"}</h3>
+        <p class="small">added by <a href="/profile/?id=${feed.added_by}">${escape(feed.added_by_username) ?? "unknown"}</a></p>
+      </div>
+      <p class="feed-url">${escape(feed.url)}</p>
     </div>
     <span class="feed-count">${feed.entry_count} links</span>
     ${

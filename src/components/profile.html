@@ -24,7 +24,17 @@
         );
     }
     if (out.length === 0) return "";
-    return "<p>they invited: " + out.join(", ") + "</p>";
+    return "<p>invited: " + out.join(", ") + "</p>";
+</script>
+
+<script &&>
+    let out = [];
+    for (const feed of p.feeds) {
+        const url = new URL(feed.url).origin;
+        out.push(`<a class="regular" href="${url}">${url}</a>`);
+    }
+    if (out.length === 0) return "";
+    return "<p>submitted posts: " + out.join(", ") + "</p>";
 </script>
 
 {{{ p.session?.is_admin && p.session?.id !== p.user.id ? c.profile_admin_form(p)

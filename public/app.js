@@ -154,7 +154,7 @@ function getTopColors(img) {
     if (a < 128) continue;
 
     let brightness = r * 0.2126 + g * 0.7152 + b * 0.0722;
-    if (brightness > 240 || brightness < 15) continue;
+    if (brightness < 30) continue;
 
     r = (r / 32) * 32;
     g = (g / 32) * 32;

@@ -107,8 +107,14 @@ function init_db(path) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (user_id, entry_id)
     );
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash BLOB PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC);
     CREATE INDEX IF NOT EXISTS entries_feed_id_idx ON feeds(id);
+    CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id);
   `);
 
   let user_version = db.query("PRAGMA user_version").get().user_version;
@@ -171,7 +177,8 @@ function route_index(req) {
       0 as visited
     FROM feeds f
     WHERE f.is_bookmark = 0
-  ` : '';
+  `
+    : "";
 
   const sql = `
       SELECT * FROM (
@@ -196,43 +203,33 @@ function route_index(req) {
   });
 }
 
-function get_all_feeds() {
-  return {
-    feeds: db
-      .query(
-        `
-        SELECT f.id as id, f.title as title, f.url as url, COUNT(e.id) AS entry_count
-        FROM feeds f
-        LEFT JOIN entries e ON e.feed_id = f.id
-        GROUP BY f.id
-        ORDER BY f.added_at DESC
-  `,
-      )
-      .all(),
-    n_feeds: db
-      .query(
-        `
-            SELECT COUNT(id) AS n
-            FROM feeds
-            WHERE is_bookmark = 0
-            ORDER BY added_at DESC
-      `,
-      )
-      .get().n,
-  };
-}
-
 function route_submit(req, msg) {
+  const feeds = db
+    .query(
+      `
+          SELECT f.id as id, f.title as title, f.url as url, f.added_by as added_by, COUNT(e.id) AS entry_count, u.username as added_by_username
+          FROM feeds f
+          LEFT JOIN entries e ON e.feed_id = f.id
+          LEFT JOIN users u ON u.id = f.added_by
+          GROUP BY f.id
+          ORDER BY f.added_at DESC
+    `,
+    )
+    .all();
+  const n_feeds = db
+    .query(
+      `
+              SELECT COUNT(id) AS n
+              FROM feeds
+              WHERE is_bookmark = 0
+              ORDER BY added_at DESC
+        `,
+    )
+    .get().n;
   return server.render("submit.html", {
-    ...get_all_feeds(),
+    feeds,
+    n_feeds,
     msg,
-    session: req.session,
-  });
-}
-
-function route_admin(req) {
-  return server.render("admin.html", {
-    ...get_all_feeds(),
     session: req.session,
   });
 }
@@ -451,9 +448,9 @@ async function poll_all() {
   console.log(`polled ${feeds.length} feeds in ${elapsed} seconds`);
 }
 
-async function insert_feed(url, bookmark) {
+async function insert_feed(url, bookmark, user_id) {
   try {
-    db.query("INSERT INTO feeds (url, is_bookmark) VALUES (?, ?)").run(
+    db.query("INSERT INTO feeds (url, is_bookmark, added_by) VALUES (?, ?, ?)").run(
       url,
       bookmark ? 1 : 0,
     );
@@ -503,7 +500,7 @@ async function try_submit(req) {
   const { error, resolved } = await validate_feed(url, bookmark);
   if (error) return error;
 
-  return await insert_feed(resolved, bookmark);
+  return await insert_feed(resolved, bookmark, req.session.id);
 }
 
 async function route_submit_post(req) {
@@ -558,10 +555,12 @@ function route_go(req) {
   const entry_id = req.params.entry_id;
   if (!entry_id) return pici.redirect("/");
 
-  if (req.session)
-  {
+  if (req.session) {
     try {
-      db.query("INSERT INTO visits (user_id, entry_id) VALUES (?, ?)").run(req.session.id, entry_id);
+      db.query("INSERT INTO visits (user_id, entry_id) VALUES (?, ?)").run(
+        req.session.id,
+        entry_id,
+      );
     } catch (e) {}
   }
 
@@ -647,11 +646,8 @@ async function route_login_post(req) {
   if (!(await Bun.password.verify(req.body.password, user.password_hash)))
     return route_login(req, "incorrect username or password");
 
-  server.add_session(req, {
-    username: user.username,
-    is_admin: user.id === 1,
-    id: user.id,
-  });
+  server.add_session(req, user);
+
   return pici.redirect("/");
 }
 
@@ -722,16 +718,18 @@ function route_profile(req, msg) {
     user.invited_by_username = db
       .query("SELECT username FROM users WHERE id = ?")
       .get(user.invited_by)?.username;
-  const invite = db
-    .query("SELECT hash FROM invites WHERE inviter_id = ?")
-    .get(id)?.hash;
-  const invitees = db.query("SELECT * FROM users WHERE invited_by = ?").all(id);
   return server.render("profile.html", {
     user,
     msg,
     session: req.session,
-    invite,
-    invitees,
+    invitees: db
+      .query("SELECT * FROM users WHERE invited_by = ? ORDER BY created_at")
+      .all(id),
+    feeds: db
+      .query("SELECT * FROM feeds WHERE added_by = ? ORDER BY added_at")
+      .all(id),
+    invite: db.query("SELECT hash FROM invites WHERE inviter_id = ?").get(id)
+      ?.hash,
   });
 }
 
@@ -840,6 +838,11 @@ function route_users(req) {
   return server.render("users.html", { users, session: req.session });
 }
 
+function hash_token(token)
+{
+  return new Bun.CryptoHasher("sha256").update(token).digest();
+}
+
 const server = pici.create({
   render: gss.render,
   get: {
@@ -847,7 +850,6 @@ const server = pici.create({
     "/favicon": route_favicon,
     "/about": route_about,
     "/submit": [require_login, route_submit],
-    "/admin": [require_login, require_admin, route_admin],
     "/go": route_go,
     "/random": route_random,
     "/extension": route_extension,
@@ -870,6 +872,21 @@ const server = pici.create({
     "/profile_admin": [require_login, require_admin, route_profile_admin_post],
     "/entry": [require_login, route_entry_post],
   },
+  add_session: (req, user) => {
+    req._new_session_token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
+    db.query("INSERT INTO sessions (token_hash, user_id) VALUES (?, ?)").run(hash_token(req._new_session_token), user.id);
+  },
+  get_session: (req) => {
+    const user_id = db.query("SELECT user_id FROM sessions WHERE token_hash = ?").get(hash_token(req.cookies.session))?.user_id;
+    if (!user_id) return;
+    const user = db.query("SELECT * FROM users WHERE id = ?").get(user_id);
+    if (!user) return;
+    user.is_admin = user.id === 1;
+    return user;
+  },
+  remove_session: (req) => {
+    db.query("DELETE FROM sessions WHERE token_hash = ?").run(hash_token(req.cookies.session));
+  }
 });
 
 init_db(process.env.DATABASE ?? "links.db");
