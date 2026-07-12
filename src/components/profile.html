@@ -34,7 +34,7 @@
         out.push(`<a class="regular" href="${url}">${url}</a>`);
     }
     if (out.length === 0) return "";
-    return "<p>submitted posts: " + out.join(", ") + "</p>";
+    return "<p>submitted: " + out.join(", ") + "</p>";
 </script>
 
 {{{ p.session?.is_admin && p.session?.id !== p.user.id ? c.profile_admin_form(p)

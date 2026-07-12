@@ -646,6 +646,9 @@ async function route_login_post(req) {
   if (!(await Bun.password.verify(req.body.password, user.password_hash)))
     return route_login(req, "incorrect username or password");
 
+  if (req.session)
+    server.remove_session(req);
+
   server.add_session(req, user);
 
   return pici.redirect("/");
