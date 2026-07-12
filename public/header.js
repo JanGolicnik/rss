@@ -21,8 +21,7 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
 }
 
-const PUBLIC_KEY =
-  "BIDcPJ2Qc6K0_DqTtXwTjwp5AisVwpIAM2RsesvCbSJmv2eXAkX2b0RmS2an7Z3ot-Wvx1nytihMC2PERp40gRk";
+const PUBLIC_KEY = "BKOzW72dCYU8ORIfO9kc-oCg6ZxWo_jHYqSynkBMUX8gHx6f20IWI3NO_dzrKIQEMVb3Gb-btw6OghzN8ryVVMg";
 
 async function try_subscribe() {
   const permission = await Notification.requestPermission();
