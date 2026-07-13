@@ -2,6 +2,7 @@
     return c.base({
         ...p,
         header: c.header({...p, extra: "discuss"}),
+        aside: c.random_aside(p),
         body: c.entry(p),
         script: "/public/app.js",
         wide_main: true

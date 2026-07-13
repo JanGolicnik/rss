@@ -549,7 +549,7 @@ function route_delete_post(req) {
     db.query("DELETE FROM entries WHERE feed_id = ?").run(feed_id);
     db.query("DELETE FROM feeds WHERE id = ?").run(feed_id);
   }
-  return pici.redirect("/admin");
+  return pici.redirect("/submit");
 }
 
 function route_go(req) {

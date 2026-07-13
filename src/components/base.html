@@ -9,19 +9,13 @@
     </head>
 
     <body>
-        <div id="left-right">
-            <div>
-                <header>{{{ p.header ?? "" }}}</header>
+        <header>{{{ p.header ?? "" }}}</header>
 
-                <aside class="msg">{{{ p.msg ?? "" }}}</aside>
+        <aside class="msg">{{{ p.msg ?? "" }}}</aside>
 
-                <aside class="options">{{{ p.aside ?? "" }}}</aside>
+        <aside class="options">{{{ p.aside ?? "" }}}</aside>
 
-                <main {{p.wide_main ? `class="wide"` : ""}}>{{{ p.body ?? "" }}}</main>
-            </div>
-
-            <iframe id="site-preview" src="about:blank" title="page"></iframe>
-        </div>
+        <main {{p.wide_main ? `class="wide"` : ""}}>{{{ p.body ?? "" }}}</main>
 
         <footer>
             <a href="https://github.com/JanGolicnik/rss">source</a>
