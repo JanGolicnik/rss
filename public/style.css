@@ -184,8 +184,7 @@ aside.options {
     border-left: 3px solid var(--border);
 }
 
-.entry:hover,
-.entry.selected {
+.entry:hover {
     background: var(--tag-bg);
 }
 
