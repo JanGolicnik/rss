@@ -2,7 +2,7 @@ const btn_subscribe = document.getElementById("btn_subscribe");
 let has_registration = false;
 navigator.serviceWorker.getRegistrations().then((regs) => {
   has_registration = regs.length > 0;
-  if (has_registration) btn_subscribe.innerText = "unsub";
+  if (!has_registration) btn_subscribe.innerText = "sub";
 });
 
 btn_subscribe.addEventListener("click", async () => {

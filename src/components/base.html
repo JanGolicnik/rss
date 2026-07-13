@@ -11,7 +11,7 @@
     <body>
         <header>{{{ p.header ?? "" }}}</header>
 
-        <aside class="msg">{{{ p.msg ?? "" }}}</aside>
+        {{{ p.msg ? `<aside class="msg"><p>${p.msg}</p></aside>` : "" }}}
 
         <aside class="options">{{{ p.aside ?? "" }}}</aside>
 
