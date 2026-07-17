@@ -4,7 +4,7 @@
   "description": "HELLO !!!",
   "version": "1.0",
   "permissions": ["activeTab"],
-  "host_permissions": ["*://blogsoni.duckdns.org/*"],
+  "host_permissions": ["*://blogsoni.com/*"],
   "action": {
     "default_icon": "icons/favicon.svg",
     "default_title": "blogson",

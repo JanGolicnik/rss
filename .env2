@@ -8,4 +8,4 @@ WEBHOOK_SERVICE_NAME=blogson
 WEBHOOK_BRANCH=master
 VAPID_PUBLIC_KEY= #generate with npx web-push generate-vapid-keys
 VAPID_PRIVATE_KEY=
-URL=https://blogsoni.duckdns.org
+URL=https://blogsoni.com
