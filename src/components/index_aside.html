@@ -1,6 +1,6 @@
-<a class={{{ `"btn ${p.range === "week" ? "active" : ""}"` }}}  href="#" onclick="filterTime('week')">week</a>
-<a class={{{ `"btn ${p.range === "month" ? "active" : ""}"` }}} href="#" onclick="filterTime('month')">month</a>
-<a class={{{ `"btn ${p.range === "all" ? "active" : ""}"` }}}   href="#" onclick="filterTime('all')">all</a>
-<a class={{{ `"btn ${p.sites_only ? "active" : ""}"` }}}        href="#" onclick="filterSites()">sites</a>
+<a class={{{ `"btn ${p.range === "week" ? "active" : ""}"` }}}  href="#" data-time="week">week</a>
+<a class={{{ `"btn ${p.range === "month" ? "active" : ""}"` }}} href="#" data-time="month">month</a>
+<a class={{{ `"btn ${p.range === "all" ? "active" : ""}"` }}}   href="#" data-time="all">all</a>
+<a class={{{ `"btn ${p.sites_only ? "active" : ""}"` }}}        href="#" data-filter>sites</a>
 
 {{{ c.random_aside(p) }}}

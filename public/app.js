@@ -1,8 +1,5 @@
-const iframe = document.getElementById("site-preview");
-let selected = null;
-
 document.addEventListener("click", function (e) {
-  let link = e.target.closest("a[data-go]");
+  const link = e.target.closest("a[data-go]");
   if (link) {
     fetch(link.dataset.go, { method: "GET", keepalive: true }).catch(
       function () {},
@@ -10,18 +7,11 @@ document.addEventListener("click", function (e) {
     return;
   }
 
-  const entry = e.target.closest("article");
-  if (entry) {
-    link = entry.querySelector("a[data-go]");
-    if (getComputedStyle(iframe).display === "none") return;
-    if (iframe.src !== link.href) {
-      iframe.src = link.href;
-      if (selected) selected.classList.remove("selected");
-      entry.classList.add("selected");
-      selected = entry;
-    }
-    return;
-  }
+  const filter_btn = e.target.closest("a[data-time]");
+  if (filter_btn) filterTime(filter_btn.dataset.time);
+
+  const sites_btn = e.target.closest("a[data-sites]");
+  if (sites_btn) filterSites();
 });
 
 function filterFeed(feedName) {
