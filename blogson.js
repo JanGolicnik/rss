@@ -6,9 +6,9 @@ import { try_submit, poll_all } from "./feeds.js";
 function route_index(req) {
   const id = req.session?.id;
 
-  const sites_only = req.params.sites_only === "1";
-  const range = req.params.range ?? "week";
-  const days = range === "week" ? -7 : range === "month" ? -30 : null;
+  const filter = req.params.filter ?? "week";
+  const sites_only = filter === "sites";
+  const days = (filter === "all" || sites_only) ? null : filter === "month" ? -30 : -7;
 
   const time_filter = days ? `AND date >= datetime('now', '${days} days')` : "";
   const bookmark_filter = sites_only ? "AND is_bookmark = 1" : "";
@@ -51,7 +51,7 @@ function route_index(req) {
   return server.render("index.html", {
     entries: db.query(sql).all(id, id),
     msg: req.flash,
-    range,
+    filter,
     sites_only,
     session: req.session,
   });
@@ -482,7 +482,7 @@ const server = pici.create({
 
 init_db(process.env.DATABASE ?? "links.db");
 
-// setInterval(poll_all, 3 * 60 * 60 * 1000);
-poll_all();
+setInterval(poll_all, 3 * 60 * 60 * 1000);
+// poll_all();
 
 server.start(5001);

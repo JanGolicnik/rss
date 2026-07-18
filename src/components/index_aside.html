@@ -1,6 +1,6 @@
-<a class={{{ `"btn ${p.range === "week" ? "active" : ""}"` }}}  href="#" data-time="week">week</a>
-<a class={{{ `"btn ${p.range === "month" ? "active" : ""}"` }}} href="#" data-time="month">month</a>
-<a class={{{ `"btn ${p.range === "all" ? "active" : ""}"` }}}   href="#" data-time="all">all</a>
-<a class={{{ `"btn ${p.sites_only ? "active" : ""}"` }}}        href="#" data-filter>sites</a>
+<a class="btn {{{p.filter === "week"  ? "active" : ""}}}" href="/">week</a>
+<a class="btn {{{p.filter === "month" ? "active" : ""}}}" href="/?filter=month">month</a>
+<a class="btn {{{p.filter === "all"   ? "active" : ""}}}" href="/?filter=all">all</a>
+<a class="btn {{{p.filter === "sites" ? "active" : ""}}}" href="/?filter=sites">sites</a>
 
 {{{ c.random_aside(p) }}}
