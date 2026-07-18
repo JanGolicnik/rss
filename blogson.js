@@ -115,6 +115,7 @@ function init_db(path) {
     CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date DESC);
     CREATE INDEX IF NOT EXISTS entries_feed_id_idx ON feeds(id);
     CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id);
+    CREATE INDEX IF NOT EXISTS visits_entry_id_idx ON visits(entry_id);
   `);
 
   let user_version = db.query("PRAGMA user_version").get().user_version;
@@ -156,10 +157,16 @@ function init_db(path) {
     db.query("ALTER TABLE entries DROP COLUMN visits").run();
     db.query("ALTER TABLE entries DROP COLUMN last_visit_at").run();
   }
+  if (user_version <= 4) {
+    user_version++;
+    db.query("ALTER TABLE visits ADD COLUMN rating TEXT").run();
+  }
   db.query(`PRAGMA user_version = ${user_version}`).get();
 }
 
 function route_index(req) {
+  const id = req.session?.id;
+
   const sites_only = req.params.sites_only === "1";
   const range = req.params.range ?? "week";
   const days = range === "week" ? -7 : range === "month" ? -30 : null;
@@ -174,7 +181,8 @@ function route_index(req) {
       NULL, NULL, NULL, NULL, NULL,
       0 as is_bookmark, 1 as is_fake,
       0 as n_comments,
-      0 as visited
+      0 AS n_likes, 0 AS n_dislikes, 0 AS n_visits,
+      0 AS visited, 0 AS my_rating
     FROM feeds f
     WHERE f.is_bookmark = 0
   `
@@ -185,8 +193,12 @@ function route_index(req) {
         SELECT e.id, e.url, e.title, e.date as date,
           e.author, e.tags, e.hn_url, e.lobste_url, f.title AS feed_title,
           f.is_bookmark, 0 as is_fake,
-          (SELECT COUNT(*) FROM comments c WHERE c.entry_id = e.id) AS n_comments,
-          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.user_id = ?) AS visited
+          (SELECT COUNT(c.id) FROM comments c WHERE c.entry_id = e.id) AS n_comments,
+          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.rating = 'like')    AS n_likes,
+          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.rating = 'dislike') AS n_dislikes,
+          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id)                          AS n_visits,
+          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.user_id = ?)        AS visited,
+          (SELECT v.rating FROM visits v WHERE v.entry_id = e.id AND v.user_id = ?)        AS rating
         FROM entries e
         JOIN feeds f ON e.feed_id = f.id
         ${union}
@@ -196,14 +208,15 @@ function route_index(req) {
   `;
 
   return server.render("index.html", {
-    entries: db.query(sql).all(req.session?.id ?? null),
+    entries: db.query(sql).all(id, id),
+    msg: req.flash,
     range,
     sites_only,
     session: req.session,
   });
 }
 
-function route_submit(req, msg) {
+function route_submit(req) {
   const feeds = db
     .query(
       `
@@ -229,7 +242,7 @@ function route_submit(req, msg) {
   return server.render("submit.html", {
     feeds,
     n_feeds,
-    msg,
+    msg: req.flash,
     session: req.session,
   });
 }
@@ -450,11 +463,9 @@ async function poll_all() {
 
 async function insert_feed(url, bookmark, user_id) {
   try {
-    db.query("INSERT INTO feeds (url, is_bookmark, added_by) VALUES (?, ?, ?)").run(
-      url,
-      bookmark ? 1 : 0,
-      user_id
-    );
+    db.query(
+      "INSERT INTO feeds (url, is_bookmark, added_by) VALUES (?, ?, ?)",
+    ).run(url, bookmark ? 1 : 0, user_id);
   } catch (e) {
     return e.code === "SQLITE_CONSTRAINT_UNIQUE"
       ? "already exists"
@@ -505,7 +516,7 @@ async function try_submit(req) {
 }
 
 async function route_submit_post(req) {
-  return route_submit(req, await try_submit(req));
+  return pici.refresh(await try_submit(req));
 }
 
 function route_favicon(req) {
@@ -581,11 +592,10 @@ function route_subscribe_post(req) {
   db.query(
     `
     INSERT INTO subscriptions (endpoint, p256dh, auth)
-     VALUES (?, ?, ?)
-     ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth
+    VALUES (?, ?, ?)
+    ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth
     `,
   ).run(sub.endpoint, sub.keys.p256dh, sub.keys.auth);
-
   return pici.error({ code: 201 });
 }
 
@@ -614,26 +624,28 @@ async function sendNotification(data) {
     });
 }
 
-function route_extension(req, msg) {
+function route_extension(req) {
   return server.render("extension.html", {
     ...req.params,
-    msg,
+    msg: req.flash,
     session: req.session,
   });
 }
 
 async function route_extension_post(req) {
-  return route_extension(req, await try_submit(req));
+  return pici.refresh(await try_submit(req));
 }
 
-async function route_login(req, msg) {
-  return server.render("login.html", { msg, session: req.session });
+async function route_login(req) {
+  return server.render("login.html", { msg: req.flash, session: req.session });
 }
 
 async function route_login_post(req) {
-  if (!req.body) return route_login(req, "form body missing i think ?");
-  if (!req.body.username) return route_login(req, "username required");
-  if (!req.body.password) return route_login(req, "password required");
+  const return_status = (flash) => pici.refresh(flash);
+
+  if (!req.body) return return_status("form body missing i think ?");
+  if (!req.body.username) return return_status("username required");
+  if (!req.body.password) return return_status("password required");
 
   const user = db
     .query(
@@ -641,24 +653,23 @@ async function route_login_post(req) {
     )
     .get(req.body.username);
 
-  if (!user) return route_login(req, "incorrect username or password");
-  if (user.banned) return route_login(req, "this user has been banned :(");
+  if (!user) return return_status("incorrect username or password");
+  if (user.banned) return return_status("this user has been banned :(");
 
   if (!(await Bun.password.verify(req.body.password, user.password_hash)))
-    return route_login(req, "incorrect username or password");
+    return return_status("incorrect username or password");
 
-  if (req.session)
-    server.remove_session(req);
+  if (req.session) server.remove_session(req);
 
   server.add_session(req, user);
 
   return pici.redirect("/");
 }
 
-async function route_register(req, msg) {
+async function route_register(req) {
   return req.params.invite
     ? server.render("register.html", {
-        msg,
+        msg: req.flash,
         invite: req.params.invite,
         session: req.session,
       })
@@ -675,26 +686,28 @@ function register_validate_username_password(username, password, password2) {
 }
 
 async function route_register_post(req) {
-  if (!req.body) return route_register(req, "form body missing i think ?");
-  if (!req.params.invite) return pici.redirect("/");
+  const return_status = (flash) => pici.refresh(flash);
+
+  if (!req.body) return return_status("form body missing i think ?");
+  if (!req.params.invite) return return_status("you need an invite");
 
   const error = register_validate_username_password(
     req.body.username,
     req.body.password,
     req.body.password2,
   );
-  if (error) return route_register(req, error);
+  if (error) return return_status(error);
 
   const invite_hash = req.params.invite;
   const invited_by = db
     .query("SELECT inviter_id FROM invites WHERE hash = ?")
     .get(invite_hash)?.inviter_id;
-  if (!invited_by) return pici.redirect("/");
+  if (!invited_by) return return_status("inviter user is missing");
 
   const cant_invite = db
     .query("SELECT cant_invite FROM users WHERE id = ?")
     .get(invited_by)?.cant_invite;
-  if (cant_invite) return route_register(req, "invalid invite");
+  if (cant_invite) return return_status("invalid invite");
 
   const password_hash = await Bun.password.hash(req.body.password);
   try {
@@ -704,8 +717,7 @@ async function route_register_post(req) {
     db.query("DELETE FROM invites WHERE hash = ?").run(invite_hash);
     return pici.redirect("/login");
   } catch (e) {
-    return route_register(
-      req,
+    return return_status(
       e.code === "SQLITE_CONSTRAINT_UNIQUE"
         ? "username alr taken"
         : "smth happened idk",
@@ -713,7 +725,7 @@ async function route_register_post(req) {
   }
 }
 
-function route_profile(req, msg) {
+function route_profile(req) {
   const id = req.params?.id ?? null;
   if (!id) return pici.not_found();
   const user = db.query("SELECT * FROM users WHERE id = ?").get(id);
@@ -724,7 +736,7 @@ function route_profile(req, msg) {
       .get(user.invited_by)?.username;
   return server.render("profile.html", {
     user,
-    msg,
+    msg: req.flash,
     session: req.session,
     invitees: db
       .query("SELECT * FROM users WHERE invited_by = ? ORDER BY created_at")
@@ -749,7 +761,7 @@ function route_profile_post(req) {
     req.body.description ?? null,
     id,
   );
-  return route_profile(req, "updated !");
+  return pici.refresh("updated !");
 }
 
 function route_profile_admin_post(req) {
@@ -763,23 +775,24 @@ function route_profile_admin_post(req) {
     req.body.cant_post ? 1 : 0,
     id,
   );
-  return route_profile(req, "updated !");
+  return pici.refresh("updated !", `/profile/id?=${id}`);
 }
 
 function route_logout_post(req) {
   server.remove_session(req);
-  return pici.redirect(`/profile/?id=${req.session.id}`);
+  return pici.refresh("logged out", "/login");
 }
 
 function route_create_invite(req) {
+  const id = req.session.id;
   const cant_invite = db
     .query("SELECT cant_invite FROM users WHERE id = ?")
-    .get(req.session.id)?.cant_invite;
-  if (cant_invite)
-    return route_profile(req, "you dont have permission to invite :/");
-  const result = db
-    .query(
-      `
+    .get(id)?.cant_invite;
+  if (cant_invite) return pici.refresh("you dont have permission to invite :/");
+  return pici.refresh(
+    db
+      .query(
+        `
     INSERT INTO invites (hash, inviter_id)
     SELECT ?, ?
     WHERE (
@@ -787,13 +800,12 @@ function route_create_invite(req) {
       WHERE inviter_id = ?
     ) < 1;
     `,
-    )
-    .run(Bun.randomUUIDv7(), req.session.id, req.session.id);
-  if (result.changes === 0) {
-    req.params.id = req.session.id; // HACk
-    return route_profile(req, "cant have more than 1 invite");
-  }
-  return pici.redirect(`/profile/?id=${req.session.id}`);
+      )
+      .run(Bun.randomUUIDv7(), req.session.id, req.session.id).changes === 0
+      ? "cant have more than 1 invite"
+      : "",
+    `/profile/?id=${id}`,
+  );
 }
 
 function route_entry(req) {
@@ -826,11 +838,11 @@ function route_entry_post(req) {
   const id = req.params.id;
   if (!id) return pici.not_found();
   const content = req.body.content?.trim().substring(0, 1234) ?? "";
-  if (content === "") return route_entry(req);
+  if (content === "") return pici.refresh("cmon");
   db.query(
     "INSERT INTO comments (content, entry_id, author_id) VALUES (?, ?, ?)",
   ).run(content, id, req.session.id);
-  return route_entry(req);
+  return pici.refresh();
 }
 
 function route_about(req) {
@@ -842,9 +854,26 @@ function route_users(req) {
   return server.render("users.html", { users, session: req.session });
 }
 
-function hash_token(token)
-{
+function hash_token(token) {
   return new Bun.CryptoHasher("sha256").update(token).digest();
+}
+
+function route_rate(req) {
+  const rating = req.params.rating;
+  const post_id = req.params.id;
+  const user_id = req.session.id;
+  if (!post_id) return pici.not_found();
+  if (rating !== "dislike" && rating !== "like") return pici.not_found();
+  const res = db
+    .query(
+      `
+      UPDATE visits SET rating = CASE WHEN rating = ? THEN NULL ELSE ? END
+      WHERE entry_id = ? AND user_id = ?`,
+    )
+    .run(rating, rating, post_id, user_id);
+  return res.changes > 0
+    ? pici.redirect("/")
+    : pici.refresh("you have to read the post to rate it dummy", "/");
 }
 
 const server = pici.create({
@@ -875,13 +904,21 @@ const server = pici.create({
     "/profile": [require_login, route_profile_post],
     "/profile_admin": [require_login, require_admin, route_profile_admin_post],
     "/entry": [require_login, route_entry_post],
+    "/rate": [require_login, route_rate],
   },
   add_session: (req, user) => {
-    req._new_session_token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
-    db.query("INSERT INTO sessions (token_hash, user_id) VALUES (?, ?)").run(hash_token(req._new_session_token), user.id);
+    req._new_session_token = Buffer.from(
+      crypto.getRandomValues(new Uint8Array(32)),
+    ).toString("hex");
+    db.query("INSERT INTO sessions (token_hash, user_id) VALUES (?, ?)").run(
+      hash_token(req._new_session_token),
+      user.id,
+    );
   },
   get_session: (req) => {
-    const user_id = db.query("SELECT user_id FROM sessions WHERE token_hash = ?").get(hash_token(req.cookies.session))?.user_id;
+    const user_id = db
+      .query("SELECT user_id FROM sessions WHERE token_hash = ?")
+      .get(hash_token(req.cookies.session))?.user_id;
     if (!user_id) return;
     const user = db.query("SELECT * FROM users WHERE id = ?").get(user_id);
     if (!user) return;
@@ -889,8 +926,10 @@ const server = pici.create({
     return user;
   },
   remove_session: (req) => {
-    db.query("DELETE FROM sessions WHERE token_hash = ?").run(hash_token(req.cookies.session));
-  }
+    db.query("DELETE FROM sessions WHERE token_hash = ?").run(
+      hash_token(req.cookies.session),
+    );
+  },
 });
 
 init_db(process.env.DATABASE ?? "links.db");

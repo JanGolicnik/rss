@@ -8,7 +8,9 @@
     --link-hover: #bbddff;
     --link-visited: #551a8b;
     --red: #cc4444;
-    --red-hover: #ee5555;
+    --red-hover: #D86F6F;
+    --green: #43CC4F;
+    --green-hover: #6FD878;
     --border: #222;
     --tag-bg: #1a1a1a;
     --input-bg: #111;
@@ -19,7 +21,7 @@
     --font-normal: 1rem;
     --font-normalsmall: 0.75rem;
     --font-small: 0.65rem;
-    --main-width: 700px;
+    --main-width: 800px;
 }
 
 * {
@@ -31,14 +33,14 @@
 
 html {
     height: 100%;
+    font-size: 20px;
 }
 
 body {
     background: var(--bg);
     color: var(--fg);
     font-family: var(--font);
-    font-size: 14px;
-    line-height: 1.6;
+    line-height: 1.25;
     width: 100%;
     height: 100%;
     margin: 0;
@@ -114,13 +116,12 @@ header {
     width: 100%;
     justify-content: center;
     align-items: center;
-    padding: 1rem .5rem 0 .5rem;
+    padding: 1rem 0.5rem 0 0.5rem;
 }
 
 header p {
     padding: 0;
 }
-
 
 header .subtitle {
     color: var(--fg-dim);
@@ -129,7 +130,7 @@ header .subtitle {
 
 header .meta {
     margin-right: auto;
-    margin-left: .5rem;
+    margin-left: 0.5rem;
 }
 
 .margin-left {
@@ -226,13 +227,14 @@ aside.options {
     min-width: 0;
 }
 
-.favicon {
+.favicon,
+p svg,
+button svg {
     width: 1rem;
     height: 1rem;
     min-width: 1rem;
     max-width: 1rem;
-    position: relative;
-    top: 0.3rem;
+    vertical-align: middle;
 }
 
 .entry-tags {
@@ -335,6 +337,23 @@ input[type="checkbox"] {
     text-align: center;
 }
 
+form.inline {
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+form.inline button {
+    display: inline;
+    background: none;
+    border: 0;
+    box-shadow: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    vertical-align: baseline;
+}
+
 a.btn,
 button.btn {
     width: fit-content;
@@ -350,7 +369,9 @@ a.visited {
 }
 
 a:hover,
-a:hover svg {
+a:hover svg,
+form.inline button:hover,
+form.inline button:hover svg {
     color: var(--link-hover);
     fill: var(--link-hover);
     text-decoration: underline;
@@ -374,6 +395,22 @@ a:hover svg {
     color: var(--red);
 }
 
+button.visited.dislike {
+    color: var(--red);
+}
+
+button.visited.dislike:hover, button.visited.dislike:hover svg {
+    color: var(--red-hover);
+}
+
+button.visited.like {
+    color: var(--green);
+}
+
+button.visited.like:hover, button.visited.like:hover svg {
+    color: var(--green-hover);
+}
+
 .entry-title {
     flex: 1 1 auto;
     min-width: 0;
@@ -391,15 +428,6 @@ a.regular {
 a.regular:visited,
 a.regular.visited {
     color: var(--link-visited);
-}
-
-a.comments {
-    margin-left: auto;
-}
-
-div.comments {
-    padding-top: 1rem;
-    padding-left: 1rem;
 }
 
 .tree,
@@ -437,8 +465,11 @@ div.comments {
     border: 0;
 }
 
-form {
+form,
+button {
+    background-color: unset;
     color: var(--fg-dim);
+    text-align: center;
 }
 
 form.vertical {
