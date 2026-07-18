@@ -1,15 +1,10 @@
 <article
-    class="entry needs-favicon"
+    class="entry"
     data-feed="{{ p.feed_title || p.feed_url }}"
     data-domain="{{ p.url.split('/')[2] }}"
+    style="border-image: linear-gradient(to bottom, {{p.favicon_color1}}, {{p.favicon_color2}}) 1"
 >
     <div class="entry-main">
-        {{{ !p.is_fake ? `<img
-            class="favicon"
-            src="/favicon/?domain=${ p.url.split('/')[2] }"
-            alt="favicon"
-            loading="lazy"
-        />` : '' }}}
         <div class="entry-title">
             <a
                 href="{{ p.is_fake ? new URL(p.url).origin : p.url }}"
@@ -18,6 +13,12 @@
                 rel="noopener"
                 class="regular {{ p.visit ? "visit" : "" }}"
             >
+                {{{ !p.is_fake ? `<img
+                    class="favicon"
+                    src="/favicon/?domain=${ p.url.split('/')[2] }"
+                    alt="favicon"
+                    loading="lazy"
+                />` : '' }}}
                 {{ p.is_bookmark ? "Site showcase: " : "" }} {{ (p.title &&
                 p.title.trim()) ? p.title : p.url.split('/')[2] }}
             </a>
@@ -45,7 +46,7 @@
         </script>
     </div>
     <div class="entry-info">
-        {{{ !p.is_fake ? `<span class="feed-tag">
+        {{{ !p.is_fake ? `<span class="feed-tag" style="color: ${p.favicon_color1}">
             ${ p.is_bookmark ? "site" : escape((p.feed_title || p.feed_url ||
             '').slice(0, 20)) } </span
         >` : '' }}} {{{ p.author ? `<span class="author">by ${p.author}</span>`
