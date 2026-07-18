@@ -7,8 +7,7 @@
     <div class="entry-main">
         <div class="entry-title">
             <a
-                href="{{ p.is_fake ? new URL(p.url).origin : p.url }}"
-                data-go="/go/?entry_id={{ p.id }}"
+                href="{{ p.is_fake ? new URL(p.url).origin : `/go/?entry_id=${ p.id }` }}"
                 target="_blank"
                 rel="noopener"
                 class="regular {{ p.visited ? "visit" : "" }}"
