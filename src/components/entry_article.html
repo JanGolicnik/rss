@@ -10,7 +10,7 @@
                 href="{{ p.is_fake ? new URL(p.url).origin : `/go/?entry_id=${ p.id }` }}"
                 target="_blank"
                 rel="noopener"
-                class="regular {{ p.visited ? "visit" : "" }}"
+                class="regular {{ p.visited ? "visited" : "" }}"
             >
                 {{{ !p.is_fake ? `<img
                     class="favicon"
