@@ -235,6 +235,7 @@ button svg {
     min-width: 1rem;
     max-width: 1rem;
     vertical-align: middle;
+    display: inline-block;
 }
 
 .entry-tags {
